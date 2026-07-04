@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>TRJV Enduro — Classement en direct</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">TRJV <span>ENDURO</span></div>
+  <div class="dim" style="font-family:var(--font-display);font-weight:600;">Classement public</div>
+  <div class="conn-indicator">
+    <span class="dot" id="conn-dot"></span>
+    <span id="conn-label">Connexion…</span>
+  </div>
+</header>
+
+<main>
+  <div class="public-header">
+    <h1 id="public-event-name">Chargement de la course…</h1>
+    <div class="subtitle">Classement mis à jour en temps réel — lecture seule</div>
+  </div>
+
+  <div class="panel">
+    <div class="filters-bar">
+      <div class="field" style="min-width:200px;">
+        <label for="p-search">Recherche</label>
+        <input type="search" id="p-search" placeholder="Nom, prénom, dossard…">
+      </div>
+      <div class="field" style="max-width:180px;">
+        <label for="p-categorie">Catégorie</label>
+        <select id="p-categorie"></select>
+      </div>
+      <div class="field" style="max-width:160px;">
+        <label for="p-sexe">Sexe</label>
+        <select id="p-sexe">
+          <option value="">Tous</option>
+          <option value="H">H</option>
+          <option value="F">F</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr id="p-thead-row"></tr></thead>
+        <tbody id="p-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer class="readonly-note">Interface spectateurs — aucune action possible ici. Rendez-vous au poste de chronométrage pour toute correction.</footer>
+</main>
+
+<script type="module">
+  import { watchConnection, watchEventConfig, watchRiders, watchTiming } from "./firebase.js";
+  import { computeClassement, sortRows } from "./classement.js";
+
+  const state = {
+    config: null, riders: {}, timing: {},
+    filters: { search: "", categorie: "", sexe: "" },
+    sort: { key: "positionGenerale", dir: "asc" }
+  };
+
+  function $(sel) { return document.querySelector(sel); }
+
+  function formatMs(ms) {
+    if (ms === null || ms === undefined || isNaN(ms)) return "—";
+    const totalMs = Math.max(0, Math.round(ms));
+    const h = Math.floor(totalMs / 3600000);
+    const m = Math.floor((totalMs % 3600000) / 60000);
+    const s = Math.floor((totalMs % 60000) / 1000);
+    const cs = Math.floor((totalMs % 1000) / 10);
+    const pad = (n) => String(n).padStart(2, "0");
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}.${pad(cs)}` : `${pad(m)}:${pad(s)}.${pad(cs)}`;
+  }
+  function positionClass(pos) {
+    if (pos === 1) return "gold";
+    if (pos === 2) return "silver";
+    if (pos === 3) return "bronze";
+    return "";
+  }
+
+  watchConnection((status) => {
+    const dot = $("#conn-dot"), label = $("#conn-label");
+    dot.className = "dot " + (status === "online" ? "online" : "offline");
+    label.textContent = status === "online" ? "En direct" : "Connexion perdue";
+  });
+
+  watchEventConfig((config) => { state.config = config; if (config?.eventName) $("#public-event-name").textContent = config.eventName; render(); });
+  watchRiders((riders) => { state.riders = riders; render(); });
+  watchTiming((timing) => { state.timing = timing; render(); });
+
+  const catSelect = $("#p-categorie");
+  catSelect.innerHTML = `<option value="">Toutes catégories</option>` +
+    ["U11", "U13", "U15", "U17"].map((c) => `<option value="${c}">${c}</option>`).join("");
+  catSelect.addEventListener("change", (e) => { state.filters.categorie = e.target.value; render(); });
+  $("#p-sexe").addEventListener("change", (e) => { state.filters.sexe = e.target.value; render(); });
+  $("#p-search").addEventListener("input", (e) => { state.filters.search = e.target.value; render(); });
+
+  function sortableTh(key, label) {
+    const active = state.sort.key === key;
+    const arrow = active ? (state.sort.dir === "asc" ? "▲" : "▼") : "";
+    return `<th class="sortable ${active ? "sorted" : ""}" data-sort-key="${key}">${label} <span class="sort-arrow">${arrow}</span></th>`;
+  }
+
+  function render() {
+    const { rows } = computeClassement(state.riders, state.timing, state.config || {});
+    let filtered = rows;
+    const { search, categorie, sexe } = state.filters;
+    if (search) {
+      const s = search.toLowerCase();
+      filtered = filtered.filter((r) => [r.nom, r.prenom, r.dossard].join(" ").toLowerCase().includes(s));
+    }
+    if (categorie) filtered = filtered.filter((r) => r.categorie === categorie);
+    if (sexe) filtered = filtered.filter((r) => r.sexe === sexe);
+    filtered = sortRows(filtered, state.sort.key, state.sort.dir);
+
+    const theadRow = $("#p-thead-row");
+    theadRow.innerHTML = [
+      sortableTh("positionGenerale", "Pos."), sortableTh("dossard", "Dossard"),
+      sortableTh("nom", "Nom"), sortableTh("prenom", "Prénom"), sortableTh("categorie", "Cat."),
+      sortableTh("club", "Club"), `<th>Statut</th>`, sortableTh("tempsFinal", "Temps final"),
+      sortableTh("ecartPremier", "Écart 1er")
+    ].join("");
+    theadRow.querySelectorAll(".sortable").forEach((th) => th.addEventListener("click", () => {
+      const key = th.dataset.sortKey;
+      if (state.sort.key === key) state.sort.dir = state.sort.dir === "asc" ? "desc" : "asc";
+      else { state.sort.key = key; state.sort.dir = "asc"; }
+      render();
+    }));
+
+    const tbody = $("#p-tbody");
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">En attente des premiers résultats…</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = filtered.map((r) => `
+      <tr>
+        <td><span class="position-badge ${positionClass(r.positionGenerale)}">${r.positionGenerale ?? "—"}</span></td>
+        <td><span class="plate ${r.statutGlobal === "EN_COURSE" ? "on-track blink-orange" : r.statutGlobal === "ARRIVE" ? "arrived" : ""}">${r.dossard}</span></td>
+        <td>${r.nom}</td>
+        <td>${r.prenom}</td>
+        <td>${r.categorie}</td>
+        <td>${r.club || ""}</td>
+        <td><span class="status-tag status-${r.statutGlobal === "ATTENTE" ? "attente" : r.statutGlobal === "EN_COURSE" ? "en-course" : "arrive"}">${r.statutGlobal === "ATTENTE" ? "En attente" : r.statutGlobal === "EN_COURSE" ? "En course" : "Arrivé"}</span></td>
+        <td class="mono" style="font-weight:700;">${formatMs(r.tempsFinal)}</td>
+        <td class="mono dim">${r.tempsFinal !== null && r.ecartPremier ? "+" + formatMs(r.ecartPremier) : (r.tempsFinal !== null ? "—" : "")}</td>
+      </tr>
+    `).join("");
+  }
+</script>
+</body>
+</html>

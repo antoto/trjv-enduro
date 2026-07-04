@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>TRJV Enduro — Chronométrage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">TRJV <span>ENDURO</span></div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="dashboard"><span class="tab-icon">🏠</span>Tableau de bord</button>
+    <button class="tab-btn" data-tab="parametres"><span class="tab-icon">⚙️</span>Course</button>
+    <button class="tab-btn" data-tab="pilotes"><span class="tab-icon">🧑‍🤝‍🧑</span>Pilotes</button>
+    <button class="tab-btn" data-tab="chrono"><span class="tab-icon">⏱️</span>Chronométrage</button>
+    <button class="tab-btn" data-tab="classement"><span class="tab-icon">🏆</span>Classement</button>
+    <button class="tab-btn" data-tab="outils"><span class="tab-icon">🛠️</span>Outils</button>
+  </nav>
+  <div class="conn-indicator">
+    <span class="dot" id="conn-dot"></span>
+    <span id="conn-label">Connexion…</span>
+    <span class="queue-badge hidden" id="queue-badge">0 en attente</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============== TABLEAU DE BORD ============== -->
+  <section id="view-dashboard" class="view active">
+    <div class="panel dash-header-card">
+      <div>
+        <h2 id="dash-event-name">Chargement…</h2>
+        <p class="subtitle" id="dash-event-meta"></p>
+      </div>
+      <button class="btn btn-secondary" data-tab-link="parametres">Modifier la course</button>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="kpi-card">
+        <div class="kpi-value" id="dash-count-total">0</div>
+        <div class="kpi-label">Pilotes inscrits</div>
+      </div>
+      <div class="kpi-card attente">
+        <div class="kpi-value" id="dash-count-attente">0</div>
+        <div class="kpi-label">En attente</div>
+      </div>
+      <div class="kpi-card encourse">
+        <div class="kpi-value" id="dash-count-encourse">0</div>
+        <div class="kpi-label">En course</div>
+      </div>
+      <div class="kpi-card arrive">
+        <div class="kpi-value" id="dash-count-arrive">0</div>
+        <div class="kpi-label">Arrivés</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>État de la course</h2>
+      <p class="subtitle">Anomalies détectées automatiquement (voir l'onglet Outils pour la liste complète et les actions).</p>
+      <div id="dash-anomalies-banner" class="import-banner ok">Chargement…</div>
+    </div>
+
+    <div class="panel">
+      <h2>Accès rapide aux postes de chronométrage</h2>
+      <p class="subtitle">Un tap pour ouvrir directement le bon poste (Haut = départ, Bas = arrivée).</p>
+      <div id="dash-quick-links"></div>
+    </div>
+  </section>
+
+  <!-- ============== COURSE (PARAMÈTRES) ============== -->
+  <section id="view-parametres" class="view">
+    <div class="panel">
+      <h2>Organisation de la course</h2>
+      <p class="subtitle">Ces paramètres génèrent automatiquement les spéciales (SP1 Haut/Bas, SP2 Haut/Bas, …).</p>
+      <form id="form-organisation">
+        <div class="field-row">
+          <div class="field">
+            <label for="input-event-name">Nom de la course</label>
+            <input type="text" id="input-event-name" placeholder="TRJV Lillebonne 2026">
+          </div>
+          <div class="field">
+            <label for="input-num-speciales">Nombre de spéciales</label>
+            <input type="number" id="input-num-speciales" min="1" max="12" value="2">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="checkbox-row">
+            <input type="checkbox" id="input-liaisons-enabled">
+            <label for="input-liaisons-enabled">Activer les liaisons chronométrées entre spéciales</label>
+          </div>
+        </div>
+        <div id="liaisons-block" class="hidden">
+          <p class="subtitle">Temps de liaison par défaut, par spéciale (modifiable pilote par pilote depuis sa fiche).</p>
+          <div class="field-row" id="liaison-inputs"></div>
+        </div>
+        <div class="field-row">
+          <div class="field" style="max-width:260px;">
+            <label for="input-anomaly-threshold">Seuil d'alerte « en course trop longtemps » (min)</label>
+            <input type="number" id="input-anomaly-threshold" min="1" value="20">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer la configuration</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============== PILOTES ============== -->
+  <section id="view-pilotes" class="view">
+    <div class="panel">
+      <h2>Pilotes</h2>
+      <p class="subtitle">Ajout manuel, import Excel FFC (.xls / .xlsx). Cliquez sur « Détails » pour modifier les temps, réinitialiser un passage ou consulter l'historique.</p>
+
+      <div id="import-banner" class="import-banner hidden"></div>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btn-add-rider">+ Ajouter un pilote</button>
+        <button class="btn btn-secondary" id="btn-import-excel">Importer Excel (FFC)</button>
+        <input type="file" id="import-file-input" accept=".xls,.xlsx" class="hidden">
+        <div class="spacer"></div>
+        <input type="search" id="riders-search" placeholder="Rechercher nom, dossard, club…" style="min-width:220px;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;">
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Dossard</th><th>Nom</th><th>Prénom</th><th>Sexe</th><th>Catégorie</th><th>Club</th><th>Licence</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="riders-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal ajout pilote -->
+    <div id="rider-modal" class="hidden modal-overlay">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2>Ajouter un pilote</h2>
+        </div>
+        <form id="rider-form">
+          <div class="field-row">
+            <div class="field">
+              <label for="rf-dossard">Dossard</label>
+              <input type="text" id="rf-dossard" required inputmode="numeric">
+            </div>
+            <div class="field">
+              <label for="rf-categorie">Catégorie</label>
+              <select id="rf-categorie">
+                <option value="U11">U11</option>
+                <option value="U13">U13</option>
+                <option value="U15">U15</option>
+                <option value="U17">U17</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="rf-nom">Nom</label>
+              <input type="text" id="rf-nom" required>
+            </div>
+            <div class="field">
+              <label for="rf-prenom">Prénom</label>
+              <input type="text" id="rf-prenom" required>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="rf-sexe">Sexe</label>
+              <select id="rf-sexe">
+                <option value="H">H</option>
+                <option value="F">F</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="rf-licence">N° licence</label>
+              <input type="text" id="rf-licence">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="rf-club">Club</label>
+              <input type="text" id="rf-club">
+            </div>
+          </div>
+          <div class="field-row">
+            <button type="button" class="btn btn-secondary" id="btn-close-rider-modal">Annuler</button>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal détail pilote : profil / temps modifiables / reset / historique -->
+    <div id="rider-detail-modal" class="hidden modal-overlay">
+      <div class="modal-box wide">
+        <div class="modal-header">
+          <h2 id="rd-title">Fiche pilote</h2>
+          <button class="btn btn-secondary btn-sm" id="rd-close-btn">Fermer ✕</button>
+        </div>
+
+        <div class="modal-tabs">
+          <button type="button" class="modal-tab-btn active" data-modal-tab="profil">Profil</button>
+          <button type="button" class="modal-tab-btn" data-modal-tab="temps">Temps de course</button>
+          <button type="button" class="modal-tab-btn" data-modal-tab="historique">Historique</button>
+        </div>
+
+        <div class="modal-pane active" data-modal-pane="profil">
+          <form id="rd-profile-form">
+            <div class="field-row">
+              <div class="field"><label for="rd-nom">Nom</label><input type="text" id="rd-nom" required></div>
+              <div class="field"><label for="rd-prenom">Prénom</label><input type="text" id="rd-prenom" required></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="rd-sexe">Sexe</label><select id="rd-sexe"><option value="H">H</option><option value="F">F</option></select></div>
+              <div class="field"><label for="rd-categorie">Catégorie</label>
+                <select id="rd-categorie"><option>U11</option><option>U13</option><option>U15</option><option>U17</option></select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="rd-club">Club</label><input type="text" id="rd-club"></div>
+              <div class="field"><label for="rd-licence">N° licence</label><input type="text" id="rd-licence"></div>
+            </div>
+            <div class="field-row">
+              <button type="submit" class="btn btn-primary">Enregistrer la fiche</button>
+              <button type="button" class="btn btn-danger" id="btn-delete-rider-detail">Supprimer le pilote</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-pane" data-modal-pane="temps">
+          <p class="subtitle">Modifiez librement départ, arrivée, pénalité, neutralisation ou liaison. Le classement est recalculé et synchronisé immédiatement à l'enregistrement. Laissez une ligne vide pour effacer le passage sur cette spéciale.</p>
+          <form id="rd-timing-form">
+            <div class="table-wrap rd-timing-table">
+              <table>
+                <thead><tr><th>Spéciale</th><th>Départ</th><th>Arrivée</th><th>Réalisé</th><th>Pénal. (s)</th><th>Neutral. (s)</th><th>Liaison (min)</th></tr></thead>
+                <tbody id="rd-timing-tbody"></tbody>
+              </table>
+            </div>
+            <div class="field-row" style="margin-top:14px;">
+              <button type="submit" class="btn btn-primary">Enregistrer les temps</button>
+              <button type="button" class="btn btn-danger" id="btn-reset-rider">♻️ Reset pilote (efface tous les temps)</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-pane" data-modal-pane="historique">
+          <p class="subtitle">Journal complet des opérations effectuées pour ce pilote.</p>
+          <div id="rd-history-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== CHRONOMÉTRAGE ============== -->
+  <section id="view-chrono" class="view">
+    <div class="panel">
+      <h2>Poste de chronométrage</h2>
+      <div class="toolbar">
+        <div class="field" style="max-width:160px;">
+          <label for="chrono-sp-select">Spéciale</label>
+          <select id="chrono-sp-select"></select>
+        </div>
+        <div class="poste-toggle">
+          <button type="button" data-poste="haut" class="active">Haut (Départ)</button>
+          <button type="button" data-poste="bas">Bas (Arrivée)</button>
+        </div>
+        <div class="spacer"></div>
+        <strong id="chrono-poste-label" class="display"></strong>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="chrono-search">Rechercher un pilote (liste)</label>
+          <input type="search" id="chrono-search" placeholder="Nom ou dossard…">
+        </div>
+        <div class="field">
+          <label for="chrono-manual-dossard">Saisie manuelle du dossard (secours réseau)</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="chrono-manual-dossard" inputmode="numeric" placeholder="N° dossard">
+            <button type="button" class="btn btn-secondary" id="chrono-manual-dossard-btn">Charger</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chrono-grid two-col">
+        <div>
+          <h3 style="margin-bottom:10px;">Liste des pilotes</h3>
+          <div class="rider-list" id="chrono-rider-list"></div>
+        </div>
+        <div>
+          <h3 style="margin-bottom:10px;">Confirmation</h3>
+          <div id="chrono-confirm-panel"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== CLASSEMENT ============== -->
+  <section id="view-classement" class="view">
+    <div class="panel">
+      <h2>Classement détaillé</h2>
+      <p class="subtitle">Cliquez sur un en-tête de colonne pour trier. Position générale, par catégorie et par sexe, détail par spéciale, écarts.</p>
+      <div class="filters-bar">
+        <div class="field" style="min-width:200px;">
+          <label for="classement-search">Recherche</label>
+          <input type="search" id="classement-search" placeholder="Nom, prénom, dossard…">
+        </div>
+        <div class="field" style="max-width:180px;">
+          <label for="classement-categorie">Catégorie</label>
+          <select id="classement-categorie"></select>
+        </div>
+        <div class="field" style="max-width:160px;">
+          <label for="classement-sexe">Sexe</label>
+          <select id="classement-sexe">
+            <option value="">Tous</option>
+            <option value="H">H</option>
+            <option value="F">F</option>
+          </select>
+        </div>
+        <div class="field" style="justify-content:flex-end;">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary btn-export-excel">⇩ Exporter (Excel)</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="classement-thead-group"></tr>
+            <tr id="classement-thead-cols"></tr>
+          </thead>
+          <tbody id="classement-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== OUTILS ============== -->
+  <section id="view-outils" class="view">
+    <div class="panel">
+      <h2>Anomalies détectées</h2>
+      <p class="subtitle">Détection automatique : arrivée sans départ, pilote en course trop longtemps, dossard inconnu, doublons…</p>
+      <div id="outils-anomalies-list"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Synchronisation</h2>
+      <p class="subtitle" id="outils-queue-status">Chargement…</p>
+      <button class="btn btn-secondary" id="btn-force-sync">🔄 Forcer la synchronisation</button>
+    </div>
+
+    <div class="panel">
+      <h2>Export</h2>
+      <p class="subtitle">Exporter le classement complet (respecte les filtres actuellement actifs dans l'onglet Classement).</p>
+      <button class="btn btn-primary btn-export-excel">⇩ Exporter le classement (Excel)</button>
+    </div>
+
+    <div class="panel">
+      <h2>Zone dangereuse</h2>
+      <p class="subtitle">Réinitialiser TOUS les temps de TOUS les pilotes (utile avant un essai à blanc). Cette action est irréversible.</p>
+      <button class="btn btn-danger" id="btn-reset-all-timing">⚠️ Réinitialiser tous les temps</button>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script type="module" src="app.js"></script>
+<script>
+  // Navigation secondaire : boutons "Modifier la course" etc. qui pointent vers un onglet.
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest("[data-tab-link]");
+    if (link) document.querySelector(`.tab-btn[data-tab="${link.dataset.tabLink}"]`)?.click();
+  });
+  // Onglets internes de la fiche pilote (profil / temps / historique)
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".modal-tab-btn");
+    if (!btn) return;
+    const modal = btn.closest(".modal-box");
+    modal.querySelectorAll(".modal-tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+    modal.querySelectorAll(".modal-pane").forEach((p) => p.classList.toggle("active", p.dataset.modalPane === btn.dataset.modalTab));
+  });
+</script>
+</body>
+</html>
