@@ -642,3 +642,202 @@ thead th.sorted { color: var(--orange); }
   .confirm-panel .name { font-size: 1.3rem; }
   .dashboard-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ============================================================
+   AJOUTS V3 — page publique : logo club, classement en cartes
+   (mobile-first) avec le détail de chaque spéciale visible en
+   permanence, sans dépendre d'un tableau large peu lisible au
+   téléphone.
+   ============================================================ */
+
+/* ---------------- Logo club + topbar publique ---------------- */
+
+.brand-group { display: flex; align-items: center; gap: 10px; }
+.club-logo {
+  height: 36px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+  padding: 2px;
+}
+.page-tag {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* ---------------- Filtres collants (pratique en scrollant une longue liste) ---------------- */
+
+.filters-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* ---------------- Légende des spéciales ---------------- */
+
+.legend-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 4px 4px 14px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); display: inline-block; }
+
+/* ---------------- Badges catégorie / sexe (utilisés dans les cartes) ---------------- */
+
+.cat-badge {
+  background: var(--bg-panel-raised);
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1px solid var(--line);
+}
+.sex-badge {
+  background: transparent;
+  color: var(--text-dim);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1px solid var(--line);
+}
+
+/* ---------------- Classement en cartes (remplace le tableau sur mobile ET desktop) ---------------- */
+
+.leaderboard-list { display: flex; flex-direction: column; gap: 10px; }
+
+.leaderboard-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.lc-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.lc-pos { min-width: 30px; text-align: center; }
+.lc-name { flex: 1; min-width: 0; }
+.lc-name .name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lc-name .meta {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.lc-time { text-align: right; margin-left: auto; }
+.lc-time .final { font-size: 1.1rem; font-weight: 700; }
+.lc-time .ecart { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+
+.lc-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.lc-liaison { font-size: 0.72rem; color: var(--text-dim); }
+
+.sp-chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 2px 2px;
+  margin-top: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+.sp-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 68px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel-raised);
+  flex-shrink: 0;
+  position: relative;
+}
+.sp-chip-label {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+}
+.sp-chip-time { font-weight: 700; font-size: 0.82rem; }
+.sp-chip-attente { opacity: 0.55; }
+.sp-chip-arrive { border-color: var(--green); }
+.sp-chip-arrive .sp-chip-time { color: var(--green); }
+.sp-chip-course { border-color: var(--orange); }
+.sp-chip-course .sp-chip-time { color: var(--orange); }
+.sp-chip-mark {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--amber);
+  color: #201a00;
+  font-size: 0.62rem;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   FLUIDITÉ MOBILE (téléphone Android / iPhone) — toutes pages
+   utilisant cette feuille de style.
+   ============================================================ */
+
+/* Empêche le zoom automatique iOS sur les champs (nécessite une taille >= 16px) */
+input, select, textarea { font-size: 16px; }
+
+/* Aucun débordement horizontal involontaire */
+html, body { overflow-x: hidden; }
+img, table { max-width: 100%; }
+
+/* Zones sûres sur iPhone (encoche / barre de gestes) */
+.topbar {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+main {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-bottom: max(60px, env(safe-area-inset-bottom));
+}
+#toast-container { bottom: max(16px, env(safe-area-inset-bottom)); }
+
+@media (max-width: 480px) {
+  .filters-bar .field { min-width: 100%; }
+  .lc-time { margin-left: 0; text-align: left; }
+  .lc-top-row { gap: 8px; }
+  .public-header h1 { font-size: 1.4rem; }
+  .club-logo { height: 30px; }
+}

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>TRJV Enduro — Classement en direct</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -11,8 +11,11 @@
 <body>
 
 <header class="topbar">
-  <div class="brand">TRJV <span>ENDURO</span></div>
-  <div class="dim" style="font-family:var(--font-display);font-weight:600;">Classement public</div>
+  <div class="brand-group">
+    <img src="logoclub.png" alt="Logo du club" class="club-logo" onerror="this.remove()">
+    <div class="brand">TRJV <span>ENDURO</span></div>
+  </div>
+  <div class="dim page-tag">Classement public</div>
   <div class="conn-indicator">
     <span class="dot" id="conn-dot"></span>
     <span id="conn-label">Connexion…</span>
@@ -25,7 +28,7 @@
     <div class="subtitle">Classement mis à jour en temps réel — lecture seule</div>
   </div>
 
-  <div class="panel">
+  <div class="panel filters-sticky">
     <div class="filters-bar">
       <div class="field" style="min-width:200px;">
         <label for="p-search">Recherche</label>
@@ -43,22 +46,23 @@
           <option value="F">F</option>
         </select>
       </div>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead><tr id="p-thead-row"></tr></thead>
-        <tbody id="p-tbody"></tbody>
-      </table>
+      <div class="field" style="max-width:220px;">
+        <label for="p-sort">Trier par</label>
+        <select id="p-sort"></select>
+      </div>
     </div>
   </div>
+
+  <div id="p-legend" class="legend-row"></div>
+
+  <div id="p-list" class="leaderboard-list"></div>
 
   <footer class="readonly-note">Interface spectateurs — aucune action possible ici. Rendez-vous au poste de chronométrage pour toute correction.</footer>
 </main>
 
 <script type="module">
   import { watchConnection, watchEventConfig, watchRiders, watchTiming } from "./firebase.js";
-  import { computeClassement, sortRows } from "./classement.js";
+  import { computeClassement, sortRows, spKeys } from "./classement.js";
 
   const state = {
     config: null, riders: {}, timing: {},
@@ -67,6 +71,7 @@
   };
 
   function $(sel) { return document.querySelector(sel); }
+  function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
   function formatMs(ms) {
     if (ms === null || ms === undefined || isNaN(ms)) return "—";
@@ -84,6 +89,8 @@
     if (pos === 3) return "bronze";
     return "";
   }
+  function statutLabel(s) { return s === "ATTENTE" ? "En attente" : s === "EN_COURSE" ? "En course" : "Arrivé"; }
+  function statutClass(s) { return s === "ATTENTE" ? "attente" : s === "EN_COURSE" ? "en-course" : "arrive"; }
 
   watchConnection((status) => {
     const dot = $("#conn-dot"), label = $("#conn-label");
@@ -91,7 +98,12 @@
     label.textContent = status === "online" ? "En direct" : "Connexion perdue";
   });
 
-  watchEventConfig((config) => { state.config = config; if (config?.eventName) $("#public-event-name").textContent = config.eventName; render(); });
+  watchEventConfig((config) => {
+    state.config = config;
+    if (config?.eventName) $("#public-event-name").textContent = config.eventName;
+    populateSortOptions();
+    render();
+  });
   watchRiders((riders) => { state.riders = riders; render(); });
   watchTiming((timing) => { state.timing = timing; render(); });
 
@@ -101,15 +113,76 @@
   catSelect.addEventListener("change", (e) => { state.filters.categorie = e.target.value; render(); });
   $("#p-sexe").addEventListener("change", (e) => { state.filters.sexe = e.target.value; render(); });
   $("#p-search").addEventListener("input", (e) => { state.filters.search = e.target.value; render(); });
+  $("#p-sort").addEventListener("change", (e) => {
+    const [key, dir] = e.target.value.split("|");
+    state.sort = { key, dir: dir || "asc" };
+    render();
+  });
 
-  function sortableTh(key, label) {
-    const active = state.sort.key === key;
-    const arrow = active ? (state.sort.dir === "asc" ? "▲" : "▼") : "";
-    return `<th class="sortable ${active ? "sorted" : ""}" data-sort-key="${key}">${label} <span class="sort-arrow">${arrow}</span></th>`;
+  function populateSortOptions() {
+    const spList = spKeys(state.config?.numSpeciales || 0);
+    const sortSelect = $("#p-sort");
+    const options = [
+      { value: "positionGenerale|asc", label: "Classement général" },
+      { value: "nom|asc", label: "Nom (A → Z)" },
+      { value: "dossard|asc", label: "N° de dossard" },
+      ...spList.map((sp) => ({ value: `sp:${sp}:tempsRetenu|asc`, label: `Temps ${sp}` }))
+    ];
+    sortSelect.innerHTML = options.map((o) => `<option value="${o.value}">${o.label}</option>`).join("");
+  }
+
+  function spChip(sp, cell) {
+    if (!cell) return "";
+    const stateClass = cell.statut === "ARRIVE" ? "sp-chip-arrive" : cell.statut === "EN_COURSE" ? "sp-chip-course blink-orange" : "sp-chip-attente";
+    const timeLabel = cell.statut === "ARRIVE" ? formatMs(cell.tempsRetenu) : cell.statut === "EN_COURSE" ? "En course" : "—";
+    let marks = "";
+    if (cell.penalite) marks += `<span class="sp-chip-mark" title="Pénalité appliquée">⚠</span>`;
+    if (cell.neutralisation) marks += `<span class="sp-chip-mark" title="Spéciale neutralisée">Ø</span>`;
+    return `
+      <div class="sp-chip ${stateClass}">
+        <span class="sp-chip-label">${esc(sp)}</span>
+        <span class="sp-chip-time mono">${timeLabel}</span>
+        ${marks}
+      </div>`;
+  }
+
+  function renderCard(r, spList) {
+    const chips = spList.map((sp) => spChip(sp, r.parSP[sp])).join("");
+    const ecart = r.tempsFinal !== null
+      ? (r.positionGenerale === 1 ? "Meneur" : (r.ecartPremier ? "+" + formatMs(r.ecartPremier) + " sur le 1er" : "—"))
+      : "";
+    const liaisonNote = (state.config?.liaisonsEnabled && r.totalLiaison > 0)
+      ? `<div class="lc-liaison">dont ${formatMs(r.totalLiaison)} de liaison</div>`
+      : "";
+
+    return `
+      <div class="leaderboard-card">
+        <div class="lc-top-row">
+          <div class="lc-pos"><span class="position-badge ${positionClass(r.positionGenerale)}">${r.positionGenerale ?? "—"}</span></div>
+          <span class="plate ${r.statutGlobal === "EN_COURSE" ? "on-track blink-orange" : r.statutGlobal === "ARRIVE" ? "arrived" : ""}">${esc(r.dossard)}</span>
+          <div class="lc-name">
+            <div class="name">${esc(r.nom)} ${esc(r.prenom)}</div>
+            <div class="meta">
+              <span class="cat-badge">${esc(r.categorie)}</span>
+              <span class="sex-badge">${esc(r.sexe)}</span>
+              ${esc(r.club || "Sans club")}
+            </div>
+          </div>
+          <div class="lc-time">
+            <div class="final mono">${formatMs(r.tempsFinal)}</div>
+            <div class="ecart mono">${ecart}</div>
+          </div>
+        </div>
+        <div class="lc-status-row">
+          <span class="status-tag status-${statutClass(r.statutGlobal)}">${statutLabel(r.statutGlobal)}</span>
+          ${liaisonNote}
+        </div>
+        <div class="sp-chip-row">${chips}</div>
+      </div>`;
   }
 
   function render() {
-    const { rows } = computeClassement(state.riders, state.timing, state.config || {});
+    const { rows, spList } = computeClassement(state.riders, state.timing, state.config || {});
     let filtered = rows;
     const { search, categorie, sexe } = state.filters;
     if (search) {
@@ -120,38 +193,16 @@
     if (sexe) filtered = filtered.filter((r) => r.sexe === sexe);
     filtered = sortRows(filtered, state.sort.key, state.sort.dir);
 
-    const theadRow = $("#p-thead-row");
-    theadRow.innerHTML = [
-      sortableTh("positionGenerale", "Pos."), sortableTh("dossard", "Dossard"),
-      sortableTh("nom", "Nom"), sortableTh("prenom", "Prénom"), sortableTh("categorie", "Cat."),
-      sortableTh("club", "Club"), `<th>Statut</th>`, sortableTh("tempsFinal", "Temps final"),
-      sortableTh("ecartPremier", "Écart 1er")
-    ].join("");
-    theadRow.querySelectorAll(".sortable").forEach((th) => th.addEventListener("click", () => {
-      const key = th.dataset.sortKey;
-      if (state.sort.key === key) state.sort.dir = state.sort.dir === "asc" ? "desc" : "asc";
-      else { state.sort.key = key; state.sort.dir = "asc"; }
-      render();
-    }));
+    const legend = $("#p-legend");
+    legend.innerHTML = spList.map((sp) => `<span class="legend-item"><span class="legend-dot"></span>${esc(sp)}</span>`).join("") ||
+      `<span class="dim">Aucune spéciale configurée pour le moment.</span>`;
 
-    const tbody = $("#p-tbody");
+    const list = $("#p-list");
     if (!filtered.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">En attente des premiers résultats…</td></tr>`;
+      list.innerHTML = `<div class="empty-state">En attente des premiers résultats…</div>`;
       return;
     }
-    tbody.innerHTML = filtered.map((r) => `
-      <tr>
-        <td><span class="position-badge ${positionClass(r.positionGenerale)}">${r.positionGenerale ?? "—"}</span></td>
-        <td><span class="plate ${r.statutGlobal === "EN_COURSE" ? "on-track blink-orange" : r.statutGlobal === "ARRIVE" ? "arrived" : ""}">${r.dossard}</span></td>
-        <td>${r.nom}</td>
-        <td>${r.prenom}</td>
-        <td>${r.categorie}</td>
-        <td>${r.club || ""}</td>
-        <td><span class="status-tag status-${r.statutGlobal === "ATTENTE" ? "attente" : r.statutGlobal === "EN_COURSE" ? "en-course" : "arrive"}">${r.statutGlobal === "ATTENTE" ? "En attente" : r.statutGlobal === "EN_COURSE" ? "En course" : "Arrivé"}</span></td>
-        <td class="mono" style="font-weight:700;">${formatMs(r.tempsFinal)}</td>
-        <td class="mono dim">${r.tempsFinal !== null && r.ecartPremier ? "+" + formatMs(r.ecartPremier) : (r.tempsFinal !== null ? "—" : "")}</td>
-      </tr>
-    `).join("");
+    list.innerHTML = filtered.map((r) => renderCard(r, spList)).join("");
   }
 </script>
 </body>

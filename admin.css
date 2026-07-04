@@ -533,3 +533,47 @@ thead th.sorted { color: var(--navy); }
   .confirm-panel .name { font-size: 1.3rem; }
   .dashboard-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ============================================================
+   AJOUTS V3 — logo du club + fluidité mobile renforcée
+   ============================================================ */
+
+.brand-group { display: flex; align-items: center; gap: 10px; }
+.club-logo {
+  height: 34px;
+  width: auto;
+  max-width: 110px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+@media (min-width: 900px) {
+  .club-logo { height: 40px; max-width: 160px; }
+}
+
+/* Empêche le zoom automatique iOS sur les champs de saisie */
+input, select, textarea { font-size: 16px; }
+
+/* Aucun débordement horizontal involontaire sur petits écrans */
+html, body { overflow-x: hidden; }
+img, table { max-width: 100%; }
+
+/* Zones sûres sur iPhone (encoche / barre de gestes) */
+.topbar {
+  padding-left: max(18px, env(safe-area-inset-left));
+  padding-right: max(18px, env(safe-area-inset-right));
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+main {
+  padding-left: max(18px, env(safe-area-inset-left));
+  padding-right: max(18px, env(safe-area-inset-right));
+  padding-bottom: max(60px, env(safe-area-inset-bottom));
+}
+#toast-container { bottom: max(16px, env(safe-area-inset-bottom)); }
+
+@media (max-width: 480px) {
+  .field-row { gap: 10px; }
+  .field { min-width: 100%; }
+  .toolbar .field { min-width: 100%; }
+  .dashboard-grid { grid-template-columns: 1fr 1fr; }
+  .modal-box { padding: 16px; }
+}
