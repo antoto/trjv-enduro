@@ -577,3 +577,142 @@ main {
   .dashboard-grid { grid-template-columns: 1fr 1fr; }
   .modal-box { padding: 16px; }
 }
+
+/* ============================================================
+   AJOUTS V4 — poste de DÉPART simplifié (saisie dossard directe)
+   ============================================================ */
+
+.haut-entry-panel {
+  background: var(--navy-bg);
+  border: 2px solid var(--navy);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 18px;
+  text-align: center;
+}
+.haut-entry-panel label {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--navy-dark);
+  text-transform: none;
+  font-size: 1rem;
+  letter-spacing: 0;
+  margin-bottom: 10px;
+}
+.dossard-input-lg {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface);
+  border: 2px solid var(--navy);
+  color: var(--navy-dark);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 2.4rem;
+  text-align: center;
+  letter-spacing: 0.05em;
+  padding: 14px 10px;
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+.dossard-input-lg:focus { border-color: var(--amber); box-shadow: 0 0 0 4px rgba(219,139,18,0.15); }
+
+.chrono-confirm-section { margin-top: 8px; }
+
+.chrono-warning-note {
+  background: var(--amber-bg);
+  color: #7A5608;
+  border: 1px solid var(--amber);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* ============================================================
+   AJOUTS V5 — navigation mobile (menu tiroir) + petits ajustements
+   ============================================================ */
+
+.dash-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--navy-dark);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.drawer-close-btn { display: none; }
+
+#nav-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 24, 40, 0.5);
+  z-index: 65;
+}
+#nav-backdrop.open { display: block; }
+
+@media (max-width: 899px) {
+  .mobile-menu-btn { display: flex; }
+
+  .tabs {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(80vw, 300px);
+    background: var(--surface);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 64px 14px 24px;
+    overflow-y: auto;
+    transform: translateX(-105%);
+    transition: transform 0.25s ease;
+    z-index: 70;
+    box-shadow: var(--shadow-lg);
+    border-right: 1px solid var(--border);
+  }
+  .tabs.open { transform: translateX(0); }
+
+  .tabs .tab-btn {
+    justify-content: flex-start;
+    padding: 15px 16px;
+    font-size: 1.08rem;
+    border-radius: var(--radius-sm);
+    min-height: 50px;
+  }
+
+  .drawer-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+}
+
+@media (min-width: 900px) {
+  .mobile-menu-btn, #nav-backdrop, .drawer-close-btn { display: none !important; }
+}

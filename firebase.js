@@ -48,6 +48,14 @@ export function saveEventConfig(config) {
   return set(ref(db, "config"), config);
 }
 
+/**
+ * Affiche / masque le classement en direct sur public.html sans toucher au
+ * reste de la configuration (mise à jour partielle, pas un set() complet).
+ */
+export function setPublicVisibility(hidden) {
+  return update(ref(db, "config"), { publicHidden: !!hidden });
+}
+
 export function watchEventConfig(callback) {
   onValue(ref(db, "config"), (snap) => callback(snap.val()));
 }

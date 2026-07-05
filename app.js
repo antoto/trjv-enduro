@@ -6,6 +6,7 @@
 import {
   watchConnection,
   saveEventConfig,
+  setPublicVisibility,
   watchEventConfig,
   saveRider,
   saveRidersBulk,
@@ -102,6 +103,25 @@ function toast(message, type = "info") {
 
 function statusLabel(statut) {
   return { ATTENTE: "En attente", EN_COURSE: "En course", ARRIVE: "Arrivé" }[statut] || statut;
+}
+
+/**
+ * Convertit une saisie "mm:ss", "mm:ss.cc" ou "h:mm:ss.cc" en millisecondes.
+ * Retourne null pour une saisie vide (= effacer) et NaN pour une saisie invalide.
+ * Symétrique de formatMs() ci-dessus.
+ */
+function parseDurationToMs(str) {
+  const cleaned = (str || "").trim();
+  if (!cleaned) return null;
+  const match = cleaned.match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2})(?:[.,](\d{1,3}))?$/);
+  if (!match) return NaN;
+  const h = match[1] ? parseInt(match[1], 10) : 0;
+  const m = parseInt(match[2], 10);
+  const s = parseInt(match[3], 10);
+  const fracStr = (match[4] || "0").padEnd(3, "0").slice(0, 3);
+  const fracMs = parseInt(fracStr, 10);
+  if (m > 59 || s > 59) return NaN;
+  return ((h * 3600) + (m * 60) + s) * 1000 + fracMs;
 }
 
 /* ================================================================== */
@@ -211,10 +231,25 @@ function switchTab(tabName) {
   $all(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabName));
   $all(".view").forEach((v) => v.classList.toggle("active", v.id === `view-${tabName}`));
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  closeMobileMenu();
+}
+
+function openMobileMenu() {
+  $(".tabs")?.classList.add("open");
+  $("#nav-backdrop")?.classList.add("open");
+}
+function closeMobileMenu() {
+  $(".tabs")?.classList.remove("open");
+  $("#nav-backdrop")?.classList.remove("open");
 }
 
 function initTabs() {
   $all(".tab-btn").forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
+  $("#btn-mobile-menu")?.addEventListener("click", openMobileMenu);
+  $("#btn-close-drawer")?.addEventListener("click", closeMobileMenu);
+  $("#nav-backdrop")?.addEventListener("click", closeMobileMenu);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMobileMenu(); });
+  $("#btn-toggle-public")?.addEventListener("click", togglePublicVisibility);
 }
 
 /* ================================================================== */
@@ -230,6 +265,8 @@ function renderDashboard() {
   $("#dash-event-meta").textContent = config
     ? `${config.numSpeciales} spéciale(s)${config.liaisonsEnabled ? " · liaisons chronométrées activées" : ""}`
     : "Rendez-vous dans Paramètres pour créer votre course.";
+
+  renderPublicVisibilityControls();
 
   const spList = spKeys(config?.numSpeciales || 0);
   const riders = Object.values(state.riders);
@@ -274,6 +311,39 @@ function renderDashboard() {
       switchTab("chrono");
       renderChronoView();
     }));
+  }
+}
+
+/* ================================================================== */
+/* VISIBILITÉ PUBLIQUE — masquer/afficher le classement sur public.html */
+/* ================================================================== */
+
+function renderPublicVisibilityControls() {
+  const hidden = !!state.config?.publicHidden;
+  [$("#btn-toggle-public"), $("#btn-toggle-public-outils")].forEach((btn) => {
+    if (!btn) return;
+    btn.textContent = hidden ? "👁️ Réafficher le classement public" : "🙈 Masquer le classement public";
+    btn.classList.toggle("btn-danger", hidden);
+    btn.classList.toggle("btn-secondary", !hidden);
+  });
+  const status = $("#outils-public-status");
+  if (status) {
+    status.textContent = hidden
+      ? "Le classement public est actuellement MASQUÉ : les visiteurs de public.html voient uniquement un message d'attente."
+      : "Le classement public est actuellement VISIBLE en temps réel sur public.html.";
+    status.classList.toggle("dim", !hidden);
+  }
+}
+
+async function togglePublicVisibility() {
+  const newValue = !state.config?.publicHidden;
+  state.config = { ...(state.config || {}), publicHidden: newValue };
+  renderPublicVisibilityControls();
+  try {
+    await setPublicVisibility(newValue);
+    toast(newValue ? "Classement public masqué." : "Classement public réaffiché.", "success");
+  } catch {
+    toast("Impossible de synchroniser ce changement pour le moment (réseau instable) — réessayez.", "error");
   }
 }
 
@@ -544,23 +614,19 @@ function renderRiderDetailTiming() {
   const spList = spKeys(state.config?.numSpeciales || 0);
 
   if (!spList.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Configurez le nombre de spéciales dans Paramètres.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="empty-state">Configurez le nombre de spéciales dans Course.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = spList.map((sp) => {
     const entry = state.timing?.[sp]?.[dossard] || {};
     const statut = entry.depart && entry.arrivee ? "ARRIVE" : entry.depart ? "EN_COURSE" : "ATTENTE";
-    const liaisonOverride = typeof entry.liaison === "number" ? entry.liaison / 60000 : "";
+    const realise = entry.depart && entry.arrivee ? entry.arrivee - entry.depart : null;
     return `
       <tr data-sp="${sp}">
-        <td><strong>${sp}</strong><br><span class="status-tag status-${statut === "ATTENTE" ? "attente" : statut === "EN_COURSE" ? "en-course" : "arrive"}">${statusLabel(statut)}</span></td>
-        <td><input type="text" class="rd-input" data-field="depart" placeholder="HH:MM:SS" value="${tsToHms(entry.depart)}"></td>
-        <td><input type="text" class="rd-input" data-field="arrivee" placeholder="HH:MM:SS" value="${tsToHms(entry.arrivee)}"></td>
-        <td class="mono dim rd-realise">${entry.depart && entry.arrivee ? formatMs(entry.arrivee - entry.depart) : "—"}</td>
-        <td><input type="number" class="rd-input" data-field="penalite" min="0" step="1" style="width:80px" value="${entry.penalite ? Math.round(entry.penalite / 1000) : 0}"></td>
-        <td><input type="number" class="rd-input" data-field="neutralisation" min="0" step="1" style="width:80px" value="${entry.neutralisation ? Math.round(entry.neutralisation / 1000) : 0}"></td>
-        <td><input type="number" class="rd-input" data-field="liaison" min="0" step="1" style="width:80px" placeholder="défaut" value="${liaisonOverride}"></td>
+        <td><strong>${sp}</strong></td>
+        <td><span class="status-tag status-${statut === "ATTENTE" ? "attente" : statut === "EN_COURSE" ? "en-course" : "arrive"}">${statusLabel(statut)}</span></td>
+        <td><input type="text" class="rd-input" data-field="temps" placeholder="mm:ss.cc" value="${realise !== null ? formatMs(realise) : ""}"></td>
       </tr>
     `;
   }).join("");
@@ -626,40 +692,31 @@ function initRiderDetailModal() {
 
     for (const row of rows) {
       const sp = row.dataset.sp;
-      const departStr = row.querySelector('[data-field="depart"]').value;
-      const arriveeStr = row.querySelector('[data-field="arrivee"]').value;
-      const penalite = parseFloat(row.querySelector('[data-field="penalite"]').value || "0") * 1000;
-      const neutralisation = parseFloat(row.querySelector('[data-field="neutralisation"]').value || "0") * 1000;
-      const liaisonRaw = row.querySelector('[data-field="liaison"]').value;
-
-      const depart = hmsToTs(departStr);
-      const arrivee = hmsToTs(arriveeStr);
-      if (Number.isNaN(depart) || Number.isNaN(arrivee)) { hasInvalid = true; continue; }
+      const tempsStr = row.querySelector('[data-field="temps"]').value;
+      const tempsMs = parseDurationToMs(tempsStr);
+      if (Number.isNaN(tempsMs)) { hasInvalid = true; continue; }
 
       const before = state.timing?.[sp]?.[dossard] || null;
-      const noData = !depart && !arrivee && !penalite && !neutralisation && liaisonRaw === "";
-
       state.timing[sp] = state.timing[sp] || {};
 
-      if (noData) {
+      if (tempsMs === null) {
+        // Champ vidé : on efface complètement le passage sur cette spéciale.
         if (before) {
           delete state.timing[sp][dossard];
           if (state.connection === "online") {
             try { await clearTimingEntry(sp, dossard); } catch { enqueue({ type: "timingClear", sp, dossard }); }
           } else enqueue({ type: "timingClear", sp, dossard });
+          logHistory(dossard, { type: "modification_temps", sp, details: `Temps ${sp} effacé manuellement.` });
         }
         continue;
       }
 
-      const statut = arrivee ? "ARRIVE" : depart ? "EN_COURSE" : "ATTENTE";
-      const patch = {
-        depart: depart || null,
-        arrivee: arrivee || null,
-        penalite: penalite || 0,
-        neutralisation: neutralisation || 0,
-        liaison: liaisonRaw === "" ? null : parseFloat(liaisonRaw) * 60000,
-        statut
-      };
+      // Le temps saisi devient le temps réalisé exact : on ancre départ/arrivée à l'instant
+      // de l'enregistrement pour obtenir arrivée − départ = temps saisi, sans toucher aux
+      // éventuels pénalité/neutralisation déjà stockés.
+      const now = Date.now();
+      const patch = { depart: now - tempsMs, arrivee: now, statut: "ARRIVE" };
+      const previousMs = before && before.depart && before.arrivee ? before.arrivee - before.depart : null;
       state.timing[sp][dossard] = { ...(before || {}), ...patch };
 
       if (state.connection === "online") {
@@ -669,17 +726,12 @@ function initRiderDetailModal() {
         enqueue({ type: "timing", sp, dossard, patch });
       }
 
-      const changed = !before || before.depart !== patch.depart || before.arrivee !== patch.arrivee ||
-        (before.penalite || 0) !== patch.penalite || (before.neutralisation || 0) !== patch.neutralisation;
-      if (changed) {
-        logHistory(dossard, {
-          type: "modification_temps", sp,
-          details: `Temps ${sp} modifié manuellement — départ ${formatClock(patch.depart)}, arrivée ${formatClock(patch.arrivee)}${patch.penalite ? `, pénalité ${formatMs(patch.penalite)}` : ""}${patch.neutralisation ? `, neutralisation ${formatMs(patch.neutralisation)}` : ""}.`
-        });
+      if (previousMs !== tempsMs) {
+        logHistory(dossard, { type: "modification_temps", sp, details: `Temps ${sp} personnalisé : ${formatMs(tempsMs)}.` });
       }
     }
 
-    if (hasInvalid) toast("Certaines heures saisies sont invalides (format attendu HH:MM ou HH:MM:SS) et ont été ignorées.", "error");
+    if (hasInvalid) toast("Certains temps saisis sont invalides (format attendu mm:ss ou h:mm:ss) et ont été ignorés.", "error");
     else toast("Temps mis à jour et classement recalculé.", "success");
 
     cacheTiming(state.timing);
@@ -729,6 +781,21 @@ function initChronoView() {
   $("#chrono-manual-dossard-btn")?.addEventListener("click", () => {
     const val = $("#chrono-manual-dossard").value.trim();
     if (val) selectRiderForChrono(val);
+  });
+
+  // Poste HAUT (départ) : un seul champ, la fiche du pilote s'affiche dès que le
+  // dossard tapé correspond à un pilote connu — aucune liste à faire défiler.
+  $("#chrono-dossard-haut")?.addEventListener("input", (e) => {
+    const val = e.target.value.trim();
+    if (val && (state.riders[val] || readRidersCache()[val])) {
+      state.chrono.selectedDossard = val;
+    } else {
+      state.chrono.selectedDossard = null;
+    }
+    renderChronoConfirmOnly();
+  });
+  $("#chrono-dossard-haut")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") e.preventDefault(); // évite tout submit accidentel ; la fiche est déjà live
   });
 }
 
@@ -802,9 +869,10 @@ async function recordArrivee(dossard) {
 
 function renderChronoView() {
   const spSelect = $("#chrono-sp-select");
+  const hautBlock = $("#chrono-haut-block");
+  const basBlock = $("#chrono-bas-block");
   const list = $("#chrono-rider-list");
-  const confirmPanel = $("#chrono-confirm-panel");
-  if (!spSelect || !list) return;
+  if (!spSelect || !hautBlock || !basBlock) return;
 
   const numSpeciales = state.config?.numSpeciales || 0;
   const keys = spKeys(numSpeciales);
@@ -818,56 +886,92 @@ function renderChronoView() {
   $all(".poste-toggle button").forEach((btn) => btn.classList.toggle("active", btn.dataset.poste === state.chrono.poste));
   $("#chrono-poste-label").textContent = state.chrono.poste === "haut" ? `${state.chrono.sp || "—"} Haut (Départ)` : `${state.chrono.sp || "—"} Bas (Arrivée)`;
 
-  const search = ($("#chrono-search")?.value || "").toLowerCase().trim();
-  const sp = state.chrono.sp;
+  const isHaut = state.chrono.poste === "haut";
+  hautBlock.classList.toggle("hidden", !isHaut);
+  basBlock.classList.toggle("hidden", isHaut);
 
-  const candidates = Object.values(state.riders).filter((r) => {
-    const status = riderTimingStatus(r.dossard, sp);
-    const relevant = state.chrono.poste === "haut" ? status === "ATTENTE" : status === "EN_COURSE";
-    if (!relevant) return false;
-    return !search || [r.nom, r.prenom, r.dossard].join(" ").toLowerCase().includes(search);
-  }).sort((a, b) => Number(a.dossard) - Number(b.dossard));
-
-  if (!candidates.length) {
-    list.innerHTML = `<div class="empty-state">${state.chrono.poste === "haut" ? "Aucun pilote en attente de départ." : "Aucun pilote actuellement en course."}</div>`;
+  if (isHaut) {
+    // Poste simplifié : un seul champ de saisie, focus automatique pour enchaîner les départs vite.
+    const hautInput = $("#chrono-dossard-haut");
+    if (hautInput && document.activeElement !== hautInput) hautInput.focus({ preventScroll: true });
   } else {
-    list.innerHTML = candidates.map((r) => `
-      <div class="rider-row" data-dossard="${r.dossard}">
-        <span class="plate ${state.chrono.poste === "bas" ? "on-track" : ""}">${r.dossard}</span>
-        <div class="info">
-          <div class="name">${r.nom} ${r.prenom}</div>
-          <div class="meta">${r.categorie} · ${r.club || "Sans club"}</div>
+    const search = ($("#chrono-search")?.value || "").toLowerCase().trim();
+    const sp = state.chrono.sp;
+    const candidates = Object.values(state.riders).filter((r) => {
+      const status = riderTimingStatus(r.dossard, sp);
+      if (status !== "EN_COURSE") return false;
+      return !search || [r.nom, r.prenom, r.dossard].join(" ").toLowerCase().includes(search);
+    }).sort((a, b) => Number(a.dossard) - Number(b.dossard));
+
+    if (!candidates.length) {
+      list.innerHTML = `<div class="empty-state">Aucun pilote actuellement en course.</div>`;
+    } else {
+      list.innerHTML = candidates.map((r) => `
+        <div class="rider-row" data-dossard="${r.dossard}">
+          <span class="plate on-track">${r.dossard}</span>
+          <div class="info">
+            <div class="name">${r.nom} ${r.prenom}</div>
+            <div class="meta">${r.categorie} · ${r.club || "Sans club"}</div>
+          </div>
+          <span class="status-tag status-en-course blink-orange">En course</span>
         </div>
-        <span class="status-tag status-${state.chrono.poste === "haut" ? "attente" : "en-course"} ${state.chrono.poste === "bas" ? "blink-orange" : ""}">
-          ${state.chrono.poste === "haut" ? "Attente" : "En course"}
-        </span>
-      </div>
-    `).join("");
-    $all(".rider-row", list).forEach((row) => row.addEventListener("click", () => selectRiderForChrono(row.dataset.dossard)));
+      `).join("");
+      $all(".rider-row", list).forEach((row) => row.addEventListener("click", () => selectRiderForChrono(row.dataset.dossard)));
+    }
   }
+
+  renderChronoConfirmOnly();
+}
+
+/**
+ * Ne (re)construit que le panneau de confirmation (fiche pilote + bouton d'action).
+ * Utilisé à chaque frappe dans le champ dossard du poste HAUT pour rester réactif
+ * sans reconstruire toute la vue (et sans faire perdre le focus du champ).
+ */
+function renderChronoConfirmOnly() {
+  const confirmPanel = $("#chrono-confirm-panel");
+  if (!confirmPanel) return;
 
   const dossard = state.chrono.selectedDossard;
   const rider = dossard ? (state.riders[dossard] || readRidersCache()[dossard]) : null;
+  const sp = state.chrono.sp;
+  const isHaut = state.chrono.poste === "haut";
+
   if (!rider) {
-    confirmPanel.innerHTML = `<div class="empty-state">Sélectionnez un pilote dans la liste, ou saisissez son dossard.</div>`;
-  } else {
-    const actionLabel = state.chrono.poste === "haut" ? "TOP DÉPART" : "VALIDER ARRIVÉE";
-    confirmPanel.innerHTML = `
-      <div class="confirm-panel">
-        <span class="plate lg">${rider.dossard}</span>
-        <div class="name">${rider.nom} ${rider.prenom}</div>
-        <div class="meta">${rider.categorie} · ${rider.sexe} · ${rider.club || "Sans club"} · Licence ${rider.licence || "—"}</div>
-        <button class="btn ${state.chrono.poste === "haut" ? "btn-primary" : "btn-success"} btn-lg btn-block" id="btn-chrono-action">${actionLabel}</button>
-      </div>
-    `;
-    $("#btn-chrono-action").addEventListener("click", async () => {
-      if (state.chrono.poste === "haut") await recordDepart(rider.dossard);
-      else await recordArrivee(rider.dossard);
-      state.chrono.selectedDossard = null;
-      $("#chrono-manual-dossard").value = "";
-      renderChronoView();
-    });
+    confirmPanel.innerHTML = `<div class="empty-state">${isHaut ? "Saisissez un dossard pour afficher la fiche du pilote." : "Sélectionnez un pilote dans la liste, ou saisissez son dossard."}</div>`;
+    return;
   }
+
+  const status = riderTimingStatus(dossard, sp);
+  let warning = "";
+  if (isHaut && (status === "EN_COURSE" || status === "ARRIVE")) {
+    const existing = state.timing?.[sp]?.[dossard];
+    warning = `<div class="chrono-warning-note">⚠ Départ déjà enregistré à ${formatClock(existing?.depart)} sur ${sp}. Valider écrasera l'ancien temps.</div>`;
+  } else if (!isHaut && status === "ARRIVE") {
+    const existing = state.timing?.[sp]?.[dossard];
+    warning = `<div class="chrono-warning-note">⚠ Arrivée déjà enregistrée à ${formatClock(existing?.arrivee)} sur ${sp}. Valider écrasera l'ancien temps.</div>`;
+  }
+
+  const actionLabel = isHaut ? "TOP DÉPART" : "VALIDER ARRIVÉE";
+  confirmPanel.innerHTML = `
+    <div class="confirm-panel">
+      ${warning}
+      <span class="plate lg">${rider.dossard}</span>
+      <div class="name">${rider.nom} ${rider.prenom}</div>
+      <div class="meta">${rider.categorie} · ${rider.sexe} · ${rider.club || "Sans club"} · Licence ${rider.licence || "—"}</div>
+      <button class="btn ${isHaut ? "btn-primary" : "btn-success"} btn-lg btn-block" id="btn-chrono-action">${actionLabel}</button>
+    </div>
+  `;
+  $("#btn-chrono-action").addEventListener("click", async () => {
+    if (isHaut) await recordDepart(rider.dossard);
+    else await recordArrivee(rider.dossard);
+    state.chrono.selectedDossard = null;
+    const manualInput = $("#chrono-manual-dossard");
+    if (manualInput) manualInput.value = "";
+    const hautInput = $("#chrono-dossard-haut");
+    if (hautInput) hautInput.value = "";
+    renderChronoView();
+  });
 }
 
 /* ================================================================== */
@@ -1040,6 +1144,7 @@ function initOutilsView() {
     toast("Synchronisation forcée…", "info");
     flushQueue();
   });
+  $("#btn-toggle-public-outils")?.addEventListener("click", togglePublicVisibility);
   $("#btn-reset-all-timing")?.addEventListener("click", async () => {
     if (!confirm("Réinitialiser TOUS les temps de TOUS les pilotes ? Cette action est irréversible (utile avant un essai à blanc).")) return;
     if (!confirm("Confirmez une seconde fois : tous les départs/arrivées de la course seront effacés.")) return;

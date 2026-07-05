@@ -28,34 +28,42 @@
     <div class="subtitle">Classement mis à jour en temps réel — lecture seule</div>
   </div>
 
-  <div class="panel filters-sticky">
-    <div class="filters-bar">
-      <div class="field" style="min-width:200px;">
-        <label for="p-search">Recherche</label>
-        <input type="search" id="p-search" placeholder="Nom, prénom, dossard…">
-      </div>
-      <div class="field" style="max-width:180px;">
-        <label for="p-categorie">Catégorie</label>
-        <select id="p-categorie"></select>
-      </div>
-      <div class="field" style="max-width:160px;">
-        <label for="p-sexe">Sexe</label>
-        <select id="p-sexe">
-          <option value="">Tous</option>
-          <option value="H">H</option>
-          <option value="F">F</option>
-        </select>
-      </div>
-      <div class="field" style="max-width:220px;">
-        <label for="p-sort">Trier par</label>
-        <select id="p-sort"></select>
-      </div>
-    </div>
+  <div id="p-hidden-message" class="hidden public-hidden-message">
+    <div class="public-hidden-icon">🏁</div>
+    <h2>Résultats momentanément masqués</h2>
+    <p>L'organisation a mis les résultats en pause (remise des prix, vérification en cours…).<br>Revenez dans quelques instants !</p>
   </div>
 
-  <div id="p-legend" class="legend-row"></div>
+  <div id="p-content">
+    <div class="panel filters-sticky">
+      <div class="filters-bar">
+        <div class="field" style="min-width:200px;">
+          <label for="p-search">Recherche</label>
+          <input type="search" id="p-search" placeholder="Nom, prénom, dossard…">
+        </div>
+        <div class="field" style="max-width:180px;">
+          <label for="p-categorie">Catégorie</label>
+          <select id="p-categorie"></select>
+        </div>
+        <div class="field" style="max-width:160px;">
+          <label for="p-sexe">Sexe</label>
+          <select id="p-sexe">
+            <option value="">Tous</option>
+            <option value="H">H</option>
+            <option value="F">F</option>
+          </select>
+        </div>
+        <div class="field" style="max-width:220px;">
+          <label for="p-sort">Trier par</label>
+          <select id="p-sort"></select>
+        </div>
+      </div>
+    </div>
 
-  <div id="p-list" class="leaderboard-list"></div>
+    <div id="p-legend" class="legend-row"></div>
+
+    <div id="p-list" class="leaderboard-list"></div>
+  </div>
 
   <footer class="readonly-note">Interface spectateurs — aucune action possible ici. Rendez-vous au poste de chronométrage pour toute correction.</footer>
 </main>
@@ -182,6 +190,11 @@
   }
 
   function render() {
+    const hidden = !!state.config?.publicHidden;
+    $("#p-hidden-message").classList.toggle("hidden", !hidden);
+    $("#p-content").classList.toggle("hidden", hidden);
+    if (hidden) return;
+
     const { rows, spList } = computeClassement(state.riders, state.timing, state.config || {});
     let filtered = rows;
     const { search, categorie, sexe } = state.filters;

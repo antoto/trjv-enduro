@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>TRJV Enduro — Notice d'utilisation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TRJV ENDURO — notice.html
+   Direction : le "road-book" du logiciel. Comme un road-book
+   d'enduro, la notice avance poste par poste, avec un repère de
+   progression façon bande de course en haut de l'écran, et des
+   numéros de section présentés comme des plaques de dossard —
+   le même repère visuel que dans l'application elle-même.
+   ============================================================ */
+
+:root {
+  --bg: #EEF2F7;
+  --surface: #FFFFFF;
+  --surface-alt: #F5F7FA;
+  --border: #E1E7EF;
+  --text: #1A2333;
+  --text-dim: #647186;
+
+  --navy: #1E3A5F;
+  --navy-dark: #14283F;
+  --navy-bg: #E8EEF5;
+
+  --green: #219653;
+  --green-bg: #E7F7EC;
+
+  --amber: #DB8B12;
+  --amber-bg: #FCF1DC;
+
+  --red: #D64541;
+  --red-bg: #FBEAE9;
+
+  --purple: #8354A3;
+  --purple-bg: #F1E9F6;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow-sm: 0 1px 2px rgba(20,30,55,0.05), 0 1px 4px rgba(20,30,55,0.04);
+  --shadow-md: 0 6px 18px rgba(20,30,55,0.08);
+  --shadow-lg: 0 16px 40px rgba(15,25,45,0.18);
+
+  --font-display: 'Rajdhani', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation: none !important; transition: none !important; }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, .display { font-family: var(--font-display); font-weight: 700; color: var(--navy-dark); margin: 0; }
+code, kbd { font-family: var(--font-mono); background: var(--surface-alt); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: 0.9em; color: var(--navy-dark); }
+a { color: var(--navy); }
+ul, ol { padding-left: 22px; }
+li { margin-bottom: 6px; }
+p { margin: 0 0 12px; }
+
+/* ---------------- Barre de progression (façon bande de course) ---------------- */
+
+.progress-bar {
+  position: fixed; top: 0; left: 0; height: 4px;
+  background: linear-gradient(90deg, var(--navy), var(--amber));
+  width: 0%;
+  z-index: 200;
+  transition: width 0.08s linear;
+}
+
+/* ---------------- En-tête ---------------- */
+
+.nb-topbar {
+  position: sticky; top: 0; z-index: 90;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 12px 18px; box-shadow: var(--shadow-sm);
+}
+.nb-menu-btn {
+  display: none; align-items: center; justify-content: center;
+  width: 42px; height: 42px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-alt);
+  color: var(--navy-dark); font-size: 1.3rem; cursor: pointer;
+}
+.nb-brand { display: flex; align-items: center; gap: 10px; }
+.nb-brand img { height: 32px; width: auto; max-width: 100px; object-fit: contain; border-radius: 6px; }
+.nb-brand .title { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; }
+.nb-brand .title span { color: var(--amber); }
+.nb-brand .subtitle { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.nb-topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+
+.btn {
+  font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em;
+  border: none; border-radius: var(--radius-sm); padding: 10px 16px; cursor: pointer;
+  font-size: 0.92rem; transition: filter 0.15s, transform 0.05s; white-space: nowrap;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--navy); color: #fff; }
+.btn-primary:hover { filter: brightness(1.12); }
+.btn-secondary { background: var(--surface-alt); color: var(--navy-dark); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--navy-bg); }
+
+/* ---------------- Layout : sommaire + contenu ---------------- */
+
+.nb-layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+
+.nb-toc {
+  position: sticky; top: 65px;
+  width: 268px; min-width: 268px;
+  max-height: calc(100vh - 65px);
+  overflow-y: auto;
+  padding: 22px 14px 40px;
+}
+.nb-toc-group { margin-bottom: 18px; }
+.nb-toc-group h4 {
+  font-family: var(--font-display); font-size: 0.72rem; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 8px; padding-left: 10px;
+}
+.nb-toc a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: var(--radius-sm);
+  color: var(--text-dim); text-decoration: none; font-size: 0.9rem; font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+.nb-toc a:hover { background: var(--surface-alt); color: var(--navy); }
+.nb-toc a.active { background: var(--navy); color: #fff; }
+.nb-toc .toc-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; min-width: 22px; border-radius: 50%;
+  background: var(--surface); color: var(--navy); border: 1.5px solid var(--navy);
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.66rem;
+}
+.nb-toc a.active .toc-num { background: #fff; color: var(--navy); border-color: #fff; }
+
+#nb-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,24,40,0.5); z-index: 80; }
+#nb-backdrop.open { display: block; }
+.nb-drawer-close { display: none; }
+
+/* ---------------- Contenu ---------------- */
+
+.nb-content { flex: 1; min-width: 0; padding: 28px 22px 80px; }
+
+.nb-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-sm);
+  scroll-margin-top: 78px;
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.nb-section.in-view { opacity: 1; transform: translateY(0); }
+
+.nb-section-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.plate {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; min-width: 46px; border-radius: 50%;
+  background: var(--surface); color: var(--navy); border: 2px solid var(--navy);
+  font-family: var(--font-mono); font-weight: 700; font-size: 1.05rem;
+}
+.nb-section-head h2 { font-size: 1.5rem; }
+.nb-eyebrow { color: var(--text-dim); font-size: 0.85rem; margin: -2px 0 18px 60px; }
+
+.hero {
+  text-align: center; padding: 46px 24px;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+  color: #fff; border: none;
+}
+.hero h1 { color: #fff; font-size: 2.1rem; margin-bottom: 12px; }
+.hero p { color: rgba(255,255,255,0.85); max-width: 620px; margin: 0 auto 8px; }
+.hero .hero-badge {
+  display: inline-block; background: rgba(255,255,255,0.14); color: #fff;
+  padding: 5px 14px; border-radius: 999px; font-family: var(--font-mono);
+  font-size: 0.78rem; margin-bottom: 16px; letter-spacing: 0.03em;
+}
+
+/* ---------------- Callouts ---------------- */
+
+.callout { border-radius: var(--radius-sm); padding: 14px 16px; margin: 14px 0; border: 1px solid; display: flex; gap: 10px; }
+.callout .icon { font-size: 1.2rem; }
+.callout-tip { background: var(--green-bg); border-color: var(--green); }
+.callout-warn { background: var(--amber-bg); border-color: var(--amber); }
+.callout-danger { background: var(--red-bg); border-color: var(--red); }
+.callout-info { background: var(--navy-bg); border-color: var(--navy); }
+.callout strong { display: block; margin-bottom: 2px; }
+
+/* ---------------- Cartes de fonctionnalité ---------------- */
+
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 16px 0; }
+.feature-card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.feature-card .fc-icon { font-size: 1.4rem; margin-bottom: 6px; }
+.feature-card h4 { font-family: var(--font-display); font-size: 1rem; margin-bottom: 4px; color: var(--navy-dark); }
+.feature-card p { font-size: 0.85rem; color: var(--text-dim); margin: 0; }
+
+/* ---------------- Étapes numérotées ---------------- */
+
+.steps { counter-reset: step; list-style: none; padding-left: 0; margin: 16px 0; }
+.steps li {
+  counter-increment: step;
+  position: relative; padding-left: 44px; margin-bottom: 16px;
+}
+.steps li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: -1px;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.85rem;
+}
+
+/* ---------------- Checklist interactive ---------------- */
+
+.checklist { list-style: none; padding: 0; margin: 16px 0; }
+.checklist li {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.checklist li:hover { border-color: var(--navy); }
+.checklist li.done { background: var(--green-bg); border-color: var(--green); }
+.checklist input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--green); flex-shrink: 0; }
+.checklist .txt { flex: 1; }
+.checklist li.done .txt { text-decoration: line-through; color: var(--text-dim); }
+.checklist-progress {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+  font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-dim);
+}
+.checklist-progress-bar { flex: 1; height: 8px; background: var(--surface-alt); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+.checklist-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--amber), var(--green)); transition: width 0.3s ease; }
+
+/* ---------------- Onglets internes (démo Haut / Bas) ---------------- */
+
+.demo-tabs { display: inline-flex; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 999px; padding: 3px; margin-bottom: 16px; }
+.demo-tabs button {
+  border: none; background: transparent; color: var(--text-dim);
+  padding: 8px 16px; border-radius: 999px; font-family: var(--font-display); font-weight: 700; cursor: pointer;
+}
+.demo-tabs button.active { background: var(--navy); color: #fff; }
+.demo-pane { display: none; }
+.demo-pane.active { display: block; }
+
+/* ---------------- Widget de démonstration "poste de départ" ---------------- */
+
+.demo-phone {
+  max-width: 360px; margin: 0 auto;
+  background: var(--navy-bg); border: 2px solid var(--navy);
+  border-radius: var(--radius); padding: 20px; text-align: center;
+}
+.demo-phone label { display: block; font-family: var(--font-display); font-weight: 700; color: var(--navy-dark); margin-bottom: 10px; }
+.demo-input {
+  width: 100%; max-width: 220px; background: #fff; border: 2px solid var(--navy);
+  color: var(--navy-dark); font-family: var(--font-mono); font-weight: 700;
+  font-size: 1.9rem; text-align: center; letter-spacing: 0.05em;
+  padding: 10px; border-radius: var(--radius-sm); outline: none;
+}
+.demo-input:focus { border-color: var(--amber); }
+.demo-result { margin-top: 16px; min-height: 130px; }
+.demo-empty { color: var(--text-dim); font-size: 0.85rem; padding-top: 30px; }
+.demo-card { background: #fff; border-radius: var(--radius-sm); padding: 14px; animation: demoPop 0.25s ease; }
+@keyframes demoPop { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+.demo-card .name { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; }
+.demo-card .meta { color: var(--text-dim); font-size: 0.82rem; margin-bottom: 10px; }
+.demo-btn-go { width: 100%; padding: 12px; border: none; border-radius: var(--radius-sm); background: var(--navy); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 1rem; cursor: pointer; }
+.demo-btn-go:hover { filter: brightness(1.15); }
+.demo-toast { margin-top: 10px; background: var(--green-bg); color: #145C34; border: 1px solid var(--green); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 0.82rem; font-weight: 600; animation: demoPop 0.25s ease; }
+.demo-hint { font-size: 0.78rem; color: var(--text-dim); margin-top: 12px; }
+
+/* ---------------- Widget de démonstration "diffusion publique" ---------------- */
+
+.demo-public-wrap { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; justify-content: center; margin: 16px 0; }
+.demo-switch-block { text-align: center; }
+.demo-switch {
+  position: relative; width: 64px; height: 34px; border-radius: 999px;
+  background: var(--border); border: none; cursor: pointer; margin-bottom: 8px;
+}
+.demo-switch::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 28px; height: 28px;
+  border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); transition: transform 0.2s ease;
+}
+.demo-switch.on { background: var(--red); }
+.demo-switch.on::after { transform: translateX(30px); }
+.demo-switch-label { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-dim); }
+
+.demo-public-screen {
+  width: 240px; min-height: 200px; background: #F1F4F8; border: 6px solid var(--navy-dark);
+  border-radius: 20px; padding: 14px; text-align: center;
+}
+.demo-public-screen .dp-title { font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; margin-bottom: 10px; color: var(--navy-dark); }
+.demo-public-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 6px; font-size: 0.72rem; text-align: left; }
+.demo-public-card b { font-family: var(--font-mono); }
+.demo-public-hidden { padding: 22px 6px; color: var(--text-dim); font-size: 0.78rem; }
+.demo-public-hidden .dp-icon { font-size: 1.8rem; display: block; margin-bottom: 6px; }
+
+/* ---------------- Accordéon (FAQ / dépannage) ---------------- */
+
+.accordion-item { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }
+.accordion-trigger {
+  width: 100%; text-align: left; background: var(--surface-alt); border: none;
+  padding: 14px 16px; font-family: var(--font-display); font-weight: 700; font-size: 0.98rem;
+  color: var(--navy-dark); cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+}
+.accordion-trigger .chevron { transition: transform 0.2s ease; color: var(--text-dim); }
+.accordion-item.open .chevron { transform: rotate(180deg); }
+.accordion-panel { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; background: #fff; }
+.accordion-item.open .accordion-panel { max-height: 600px; }
+.accordion-panel-inner { padding: 4px 16px 16px; color: var(--text); font-size: 0.92rem; }
+
+/* ---------------- Tableau ---------------- */
+
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 14px 0; }
+thead th { text-align: left; background: var(--surface-alt); color: var(--navy-dark); font-family: var(--font-display); font-weight: 700; padding: 8px 10px; border-bottom: 2px solid var(--border); }
+tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+/* ---------------- Pense-bête imprimable ---------------- */
+
+.cheat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px; }
+.cheat-card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.cheat-card h4 { font-family: var(--font-display); color: var(--navy-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.cheat-card ul { margin: 0; padding-left: 18px; font-size: 0.88rem; }
+
+/* ---------------- Bouton retour en haut ---------------- */
+
+.scroll-top-btn {
+  position: fixed; bottom: 20px; right: 20px; z-index: 90;
+  width: 46px; height: 46px; border-radius: 50%; border: none;
+  background: var(--navy); color: #fff; font-size: 1.2rem; cursor: pointer;
+  box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+}
+.scroll-top-btn.visible { opacity: 1; pointer-events: auto; }
+
+footer.nb-footer { text-align: center; color: var(--text-dim); font-size: 0.85rem; padding: 20px; }
+
+/* ---------------- Responsive / mobile ---------------- */
+
+@media (max-width: 900px) {
+  .nb-menu-btn { display: flex; }
+  .nb-toc {
+    position: fixed; top: 0; left: 0; bottom: 0; width: min(82vw, 300px);
+    background: var(--surface); z-index: 90; padding: 64px 14px 30px;
+    transform: translateX(-105%); transition: transform 0.25s ease;
+    box-shadow: var(--shadow-lg); border-right: 1px solid var(--border);
+    max-height: 100vh;
+  }
+  .nb-toc.open { transform: translateX(0); }
+  .nb-drawer-close {
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; top: 12px; right: 12px; width: 36px; height: 36px;
+    border-radius: 50%; border: 1px solid var(--border); background: var(--surface-alt);
+    font-size: 1.05rem; cursor: pointer;
+  }
+  .nb-content { padding: 20px 14px 70px; }
+  .nb-section { padding: 18px; }
+  .nb-eyebrow { margin-left: 0; }
+  .demo-public-wrap { flex-direction: column; }
+}
+
+/* ---------------- Impression ---------------- */
+
+@media print {
+  .nb-topbar, .nb-toc, #nb-backdrop, .scroll-top-btn, .progress-bar, .demo-phone, .demo-public-wrap, .demo-tabs { display: none !important; }
+  .nb-layout { display: block; }
+  .nb-section { box-shadow: none; opacity: 1 !important; transform: none !important; break-inside: avoid; border: 1px solid #ccc; }
+  body { background: #fff; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress-bar"></div>
+
+<header class="nb-topbar">
+  <button type="button" id="btn-nb-menu" class="nb-menu-btn" aria-label="Ouvrir le sommaire">☰</button>
+  <div class="nb-brand">
+    <img src="logoclub.png" alt="Logo du club" onerror="this.remove()">
+    <div>
+      <div class="title">TRJV <span>ENDURO</span></div>
+      <div class="subtitle">Notice d'utilisation</div>
+    </div>
+  </div>
+  <div class="nb-topbar-actions">
+    <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimer</button>
+    <a class="btn btn-primary" href="index.html">← Retour à l'application</a>
+  </div>
+</header>
+
+<div id="nb-backdrop"></div>
+
+<div class="nb-layout">
+  <nav class="nb-toc" id="nb-toc">
+    <button type="button" id="btn-nb-drawer-close" class="nb-drawer-close" aria-label="Fermer">✕</button>
+
+    <div class="nb-toc-group">
+      <h4>Démarrer</h4>
+      <a href="#intro"><span class="toc-num">•</span> Bienvenue</a>
+      <a href="#checklist"><span class="toc-num">00</span> Avant le jour J</a>
+    </div>
+
+    <div class="nb-toc-group">
+      <h4>Le logiciel, poste par poste</h4>
+      <a href="#dashboard"><span class="toc-num">01</span> Tableau de bord</a>
+      <a href="#course"><span class="toc-num">02</span> Course</a>
+      <a href="#pilotes"><span class="toc-num">03</span> Pilotes</a>
+      <a href="#chrono"><span class="toc-num">04</span> Chronométrage</a>
+      <a href="#classement"><span class="toc-num">05</span> Classement</a>
+      <a href="#outils"><span class="toc-num">06</span> Outils</a>
+      <a href="#public"><span class="toc-num">07</span> Écran public</a>
+      <a href="#horsligne"><span class="toc-num">08</span> Mode hors-ligne</a>
+      <a href="#personnalisation"><span class="toc-num">09</span> Personnalisation</a>
+    </div>
+
+    <div class="nb-toc-group">
+      <h4>Références</h4>
+      <a href="#depannage"><span class="toc-num">?</span> Dépannage / FAQ</a>
+      <a href="#pensebete"><span class="toc-num">🖨</span> Pense-bête à imprimer</a>
+    </div>
+  </nav>
+
+  <main class="nb-content">
+
+    <!-- ============== INTRO ============== -->
+    <section id="intro" class="nb-section hero">
+      <div class="hero-badge">GUIDE COMPLET · ORGANISATEUR</div>
+      <h1>Le road-book de votre logiciel de chronométrage</h1>
+      <p>Cette notice explique, poste par poste, tout ce que fait TRJV Enduro : de la création de la course jusqu'à la remise des prix. Lisez-la une première fois avant votre premier événement, puis gardez-la sous la main comme référence — la barre en haut de l'écran suit votre progression, exactement comme une course.</p>
+      <p style="margin-top:16px;"><strong>3 pages composent le logiciel :</strong> <code>index.html</code> (votre espace d'administration, celui que vous utilisez pour tout piloter), <code>public.html</code> (l'écran que vous partagez avec les spectateurs) et cette notice.</p>
+    </section>
+
+    <!-- ============== 00 CHECKLIST ============== -->
+    <section id="checklist" class="nb-section">
+      <div class="nb-section-head"><span class="plate">00</span><h2>Avant le jour J</h2></div>
+      <p class="nb-eyebrow">Cochez au fur et à mesure — cette liste n'est pas sauvegardée, elle sert juste de pense-bête pendant votre lecture.</p>
+
+      <div class="checklist-progress">
+        <span id="checklist-count">0 / 8</span>
+        <div class="checklist-progress-bar"><div class="checklist-progress-fill" id="checklist-fill"></div></div>
+      </div>
+      <ul class="checklist" id="checklist-list">
+        <li><input type="checkbox"><span class="txt">Créer la course dans <strong>Course</strong> : nom, nombre de spéciales, liaisons si besoin.</span></li>
+        <li><input type="checkbox"><span class="txt">Importer ou saisir la liste des pilotes (Excel FFC ou ajout manuel).</span></li>
+        <li><input type="checkbox"><span class="txt">Vérifier qu'aucun dossard n'est en doublon (bannière d'import ou onglet Outils).</span></li>
+        <li><input type="checkbox"><span class="txt">Déposer <code>logoclub.png</code> à la racine du projet si ce n'est pas déjà fait.</span></li>
+        <li><input type="checkbox"><span class="txt">Tester le poste de départ (Haut) et le poste d'arrivée (Bas) avec un dossard fictif.</span></li>
+        <li><input type="checkbox"><span class="txt">Couper le Wi-Fi/4G du téléphone un instant pour vérifier que le mode hors-ligne fonctionne bien.</span></li>
+        <li><input type="checkbox"><span class="txt">Partager le lien (ou le QR code) de <code>public.html</code> avec les spectateurs et les familles.</span></li>
+        <li><input type="checkbox"><span class="txt">Vérifier que le classement public n'est pas resté masqué depuis un essai précédent.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============== 01 TABLEAU DE BORD ============== -->
+    <section id="dashboard" class="nb-section">
+      <div class="nb-section-head"><span class="plate">01</span><h2>Tableau de bord</h2></div>
+      <p class="nb-eyebrow">Le premier écran que vous voyez en ouvrant <code>index.html</code>.</p>
+
+      <p>C'est la vue d'ensemble de votre course, pensée pour être comprise en quelques secondes, même sous le stress d'une compétition.</p>
+
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">🏷️</div><h4>En-tête de course</h4><p>Nom de la course et résumé (nombre de spéciales, liaisons activées ou non). Le bouton <strong>Modifier la course</strong> renvoie directement à l'onglet Course.</p></div>
+        <div class="feature-card"><div class="fc-icon">🙈</div><h4>Masquer le classement public</h4><p>Bouton à portée de main pour couper l'affichage public en un tap (voir la section Outils pour le détail).</p></div>
+        <div class="feature-card"><div class="fc-icon">📊</div><h4>Compteurs en direct</h4><p>Pilotes inscrits, en attente, en course et arrivés — recalculés en temps réel à chaque départ ou arrivée pointée.</p></div>
+        <div class="feature-card"><div class="fc-icon">⚠️</div><h4>État de la course</h4><p>Résumé des anomalies détectées automatiquement (voir Outils pour la liste complète et les corriger).</p></div>
+        <div class="feature-card"><div class="fc-icon">⏱️</div><h4>Accès rapide aux postes</h4><p>Un bouton par spéciale et par poste (Haut/Bas) : un tap et vous êtes directement sur le bon poste de chronométrage, déjà configuré.</p></div>
+      </div>
+
+      <div class="callout callout-tip">
+        <span class="icon">💡</span>
+        <div><strong>Astuce</strong>Sur le terrain, utilisez toujours les boutons d'accès rapide du tableau de bord plutôt que de re-sélectionner la spéciale à chaque fois dans l'onglet Chronométrage : c'est plus rapide et vous ne risquez pas de vous tromper de spéciale.</div>
+      </div>
+    </section>
+
+    <!-- ============== 02 COURSE ============== -->
+    <section id="course" class="nb-section">
+      <div class="nb-section-head"><span class="plate">02</span><h2>Course</h2></div>
+      <p class="nb-eyebrow">Le paramétrage de base — à faire en tout premier, avant d'ajouter des pilotes.</p>
+
+      <p>C'est ici que vous décrivez la structure de votre épreuve. Le logiciel génère automatiquement les postes correspondants.</p>
+
+      <ol class="steps">
+        <li><strong>Nom de la course</strong> — apparaît en haut du tableau de bord et sur l'écran public (ex : « TRJV Lillebonne 2026 »).</li>
+        <li><strong>Nombre de spéciales</strong> — chaque spéciale génère automatiquement deux postes : <code>SPn Haut</code> (départ) et <code>SPn Bas</code> (arrivée). Avec 2 spéciales, vous aurez donc 4 postes physiques à installer sur le terrain.</li>
+        <li><strong>Liaisons chronométrées</strong> (case à cocher) — si vous l'activez, un temps de liaison (en minutes) s'ajoute au temps final de chaque pilote pour chaque spéciale terminée. Laissez décochée si vos liaisons ne sont pas chronométrées.</li>
+        <li><strong>Enregistrer la configuration</strong> — synchronisé immédiatement avec tous les postes connectés.</li>
+      </ol>
+
+      <div class="callout callout-warn">
+        <span class="icon">⚠️</span>
+        <div><strong>Modifier le nombre de spéciales en cours de course</strong>Évitez de réduire le nombre de spéciales une fois la course commencée : les temps déjà enregistrés sur une spéciale supprimée resteraient orphelins. Vous pouvez en revanche l'augmenter sans problème.</div>
+      </div>
+    </section>
+
+    <!-- ============== 03 PILOTES ============== -->
+    <section id="pilotes" class="nb-section">
+      <div class="nb-section-head"><span class="plate">03</span><h2>Pilotes</h2></div>
+      <p class="nb-eyebrow">La liste des engagés, avec deux façons de la remplir.</p>
+
+      <h3 style="font-size:1.1rem; margin-bottom:8px;">Ajouter un pilote</h3>
+      <p>Le bouton <strong>+ Ajouter un pilote</strong> ouvre une fiche avec : dossard (obligatoire et unique), nom, prénom, sexe, catégorie (U11/U13/U15/U17), club et numéro de licence.</p>
+
+      <h3 style="font-size:1.1rem; margin: 18px 0 8px;">Importer un fichier Excel (FFC)</h3>
+      <p>Le bouton <strong>Importer Excel</strong> lit un fichier <code>.xls</code>/<code>.xlsx</code> et reconnaît automatiquement les colonnes (Nom, Prénom, Sexe, Catégorie, Club, Licence, Dossard) quel que soit leur ordre ou leurs légères variantes d'intitulé. Une bannière s'affiche ensuite pour signaler :</p>
+      <ul>
+        <li>les <strong>doublons de dossard à l'intérieur du fichier</strong> importé ;</li>
+        <li>les <strong>dossards qui existaient déjà</strong> dans votre liste (ils seront remplacés par la nouvelle fiche) ;</li>
+        <li>les <strong>lignes ignorées</strong> faute de numéro de dossard.</li>
+      </ul>
+
+      <h3 style="font-size:1.1rem; margin: 18px 0 8px;">La fiche pilote (cliquez sur une ligne du tableau)</h3>
+      <p>Elle s'ouvre avec trois onglets :</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">🪪</div><h4>Profil</h4><p>Modifier l'identité du pilote, ou le supprimer définitivement (fiche + temps + historique).</p></div>
+        <div class="feature-card"><div class="fc-icon">⏱️</div><h4>Temps de course</h4><p>Un champ par spéciale pour personnaliser directement le temps réalisé (voir section Chronométrage). Contient aussi le bouton <strong>Reset pilote</strong>.</p></div>
+        <div class="feature-card"><div class="fc-icon">📜</div><h4>Historique</h4><p>Le journal complet du pilote : création, départs, arrivées, modifications manuelles, reset.</p></div>
+      </div>
+
+      <div class="callout callout-danger">
+        <span class="icon">🚨</span>
+        <div><strong>Le bug classique — et sa solution</strong>Si vous supprimez un pilote puis recréez quelqu'un d'autre avec le <em>même numéro de dossard</em>, l'ancien passage en course était autrefois réattribué par erreur au nouveau pilote. C'est corrigé : la suppression efface désormais aussi tous les temps et l'historique associés à ce dossard. Pour repartir de zéro <em>sans</em> supprimer la fiche (par exemple si le pilote a fait une fausse manip et doit relancer sa course), utilisez plutôt le bouton <strong>♻️ Reset pilote</strong> dans l'onglet « Temps de course » de sa fiche : cela efface départs, arrivées, temps et statuts, mais conserve son nom, son dossard et son historique.</div>
+      </div>
+    </section>
+
+    <!-- ============== 04 CHRONOMÉTRAGE ============== -->
+    <section id="chrono" class="nb-section">
+      <div class="nb-section-head"><span class="plate">04</span><h2>Chronométrage</h2></div>
+      <p class="nb-eyebrow">Le cœur du logiciel — un poste par spéciale et par sens (Haut = départ, Bas = arrivée).</p>
+
+      <p>Sélectionnez d'abord la spéciale concernée, puis basculez entre <strong>Haut (Départ)</strong> et <strong>Bas (Arrivée)</strong>. Les deux postes fonctionnent très différemment, pensés chacun pour leur usage réel sur le terrain :</p>
+
+      <div class="demo-tabs" role="tablist">
+        <button type="button" class="demo-tab-btn active" data-demo-tab="haut">🚀 Poste Haut (Départ)</button>
+        <button type="button" class="demo-tab-btn" data-demo-tab="bas">🏁 Poste Bas (Arrivée)</button>
+      </div>
+
+      <div class="demo-pane active" data-demo-pane="haut">
+        <p>Un seul geste : <strong>taper le numéro de dossard</strong>. Dès qu'il correspond à un pilote connu, sa fiche s'affiche automatiquement — pas de liste à faire défiler. Il ne reste qu'à appuyer sur <strong>TOP DÉPART</strong>.</p>
+
+        <div class="demo-phone">
+          <label>Essayez : tapez 12, 7 ou 99</label>
+          <input type="text" inputmode="numeric" class="demo-input" id="demo-dossard-input" placeholder="Ex : 42">
+          <div class="demo-result" id="demo-result"></div>
+        </div>
+        <p class="demo-hint">👆 Ceci est une démonstration hors-ligne avec 3 pilotes fictifs, pour vous entraîner sans risque avant la course.</p>
+
+        <ul style="margin-top:16px;">
+          <li>Le champ se vide et reprend le focus automatiquement après validation, pour enchaîner le pilote suivant sans re-taper.</li>
+          <li>Si ce dossard a déjà un départ enregistré sur cette spéciale, un bandeau ⚠️ apparaît avant de valider, pour éviter d'écraser un temps par erreur.</li>
+        </ul>
+      </div>
+
+      <div class="demo-pane" data-demo-pane="bas">
+        <p>Ici, vous voyez la <strong>liste des pilotes actuellement en course</strong> sur la spéciale sélectionnée (ceux qui ont un départ mais pas encore d'arrivée). Cliquez sur un pilote dans la liste (ou utilisez la recherche par nom/dossard) pour ouvrir sa fiche de confirmation, puis appuyez sur <strong>VALIDER ARRIVÉE</strong>.</p>
+        <div class="callout callout-info">
+          <span class="icon">🛟</span>
+          <div><strong>Secours réseau</strong>Si un pilote n'apparaît pas dans la liste (souci de synchronisation), le champ « Saisie manuelle du dossard » permet de le retrouver directement depuis le cache local de l'appareil, sans dépendre du réseau.</div>
+        </div>
+        <p>Comme au départ, une alerte apparaît si une arrivée est déjà enregistrée pour ce pilote sur cette spéciale.</p>
+      </div>
+
+      <div class="callout callout-warn" style="margin-top:18px;">
+        <span class="icon">⚠️</span>
+        <div><strong>Arrivée sans départ / départ oublié</strong>Ces deux cas sont détectés automatiquement et remontent dans les anomalies (onglet Outils). Ils n'empêchent pas d'enregistrer, mais vous devrez corriger le temps manuellement ensuite via la fiche du pilote.</div>
+      </div>
+    </section>
+
+    <!-- ============== 05 CLASSEMENT ============== -->
+    <section id="classement" class="nb-section">
+      <div class="nb-section-head"><span class="plate">05</span><h2>Classement</h2></div>
+      <p class="nb-eyebrow">Le tableau complet, recalculé en temps réel à chaque pointage.</p>
+
+      <p>Pour chaque pilote, le classement affiche :</p>
+      <table>
+        <thead><tr><th>Colonne</th><th>Signification</th></tr></thead>
+        <tbody>
+          <tr><td>Pos. générale / catégorie / sexe</td><td>Trois classements calculés en parallèle, à partir du même temps final.</td></tr>
+          <tr><td>Dossard, nom, prénom, catégorie, club</td><td>Identité du pilote.</td></tr>
+          <tr><td>Par spéciale</td><td>Heure de départ, heure d'arrivée, temps réalisé, pénalité éventuelle, neutralisation éventuelle, statut (En attente / En course / Arrivé).</td></tr>
+          <tr><td>Total SP</td><td>Somme des temps retenus sur toutes les spéciales terminées.</td></tr>
+          <tr><td>Liaison</td><td>Temps de liaison cumulé, si l'option est activée dans Course.</td></tr>
+          <tr><td>Temps final</td><td>Total SP + liaison. C'est la valeur utilisée pour classer.</td></tr>
+          <tr><td>Écart 1er / précédent</td><td>Comparaison directe avec le leader et avec le pilote juste devant.</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>Trier :</strong> cliquez sur n'importe quel en-tête de colonne pour trier le tableau selon cette valeur (un second clic inverse l'ordre). <strong>Filtrer :</strong> recherche par nom/dossard, filtre catégorie et sexe, combinables. <strong>Exporter :</strong> le bouton <strong>⇩ Exporter le classement (Excel)</strong> respecte les filtres actifs au moment du clic.</p>
+
+      <div class="callout callout-tip">
+        <span class="icon">💡</span>
+        <div><strong>Un pilote n'a pas de temps final ?</strong>C'est normal tant qu'il n'a pas terminé <em>toutes</em> les spéciales de la course : il reste visible avec ses temps partiels, mais n'apparaît pas encore dans le classement général chiffré.</div>
+      </div>
+    </section>
+
+    <!-- ============== 06 OUTILS ============== -->
+    <section id="outils" class="nb-section">
+      <div class="nb-section-head"><span class="plate">06</span><h2>Outils</h2></div>
+      <p class="nb-eyebrow">Tout ce qui ne sert pas en continu, mais qu'il faut savoir trouver.</p>
+
+      <h3 style="font-size:1.1rem; margin-bottom:8px;">📡 Diffusion publique</h3>
+      <p>Un bouton pour masquer instantanément le classement affiché sur <code>public.html</code> — par exemple pendant une remise des prix, ou le temps de corriger une erreur avant de la montrer au public. Les visiteurs voient alors un simple message d'attente, sans aucun temps affiché.</p>
+
+      <div class="demo-public-wrap">
+        <div class="demo-switch-block">
+          <button type="button" class="demo-switch" id="demo-public-switch" aria-label="Basculer la démonstration"></button>
+          <div class="demo-switch-label" id="demo-switch-label">Classement VISIBLE</div>
+        </div>
+        <div class="demo-public-screen" id="demo-public-screen"></div>
+      </div>
+      <p class="demo-hint" style="text-align:center;">👆 Essayez l'interrupteur : c'est exactement ce que voient vos spectateurs sur <code>public.html</code>, en temps réel.</p>
+
+      <h3 style="font-size:1.1rem; margin: 22px 0 8px;">⚠️ Anomalies détectées</h3>
+      <p>Liste complète (contrairement au résumé du tableau de bord) de tout ce que le logiciel détecte automatiquement :</p>
+      <ul>
+        <li>arrivée enregistrée sans départ correspondant ;</li>
+        <li>pilote en course depuis un temps anormalement long (au-delà du seuil configuré) ;</li>
+        <li>dossard « inconnu » : des temps existent pour un dossard qui n'a plus de fiche pilote (généralement après une suppression malencontreuse) ;</li>
+        <li>doublons détectés à l'import.</li>
+      </ul>
+      <p>Un bouton <strong>Ouvrir la fiche</strong> à côté de chaque anomalie corrigible vous amène directement dessus.</p>
+
+      <h3 style="font-size:1.1rem; margin: 22px 0 8px;">🔄 Synchronisation</h3>
+      <p>Affiche l'état de la file d'attente locale (voir section Mode hors-ligne). Le bouton <strong>Forcer la synchronisation</strong> retente immédiatement l'envoi de toutes les actions en attente.</p>
+
+      <h3 style="font-size:1.1rem; margin: 22px 0 8px;">⇩ Export</h3>
+      <p>Même export Excel complet que dans l'onglet Classement, accessible directement depuis les outils.</p>
+
+      <div class="callout callout-danger">
+        <span class="icon">🚨</span>
+        <div><strong>Zone dangereuse</strong>Le bouton <strong>Réinitialiser tous les temps</strong> efface les départs/arrivées de <em>tous</em> les pilotes, sur toutes les spéciales. Il est protégé par une double confirmation et n'a d'intérêt que pour un essai à blanc avant la vraie course — ne l'utilisez jamais pendant une épreuve en cours.</div>
+      </div>
+    </section>
+
+    <!-- ============== 07 ÉCRAN PUBLIC ============== -->
+    <section id="public" class="nb-section">
+      <div class="nb-section-head"><span class="plate">07</span><h2>Écran public</h2></div>
+      <p class="nb-eyebrow"><code>public.html</code> — l'adresse à partager avec les spectateurs et les familles.</p>
+
+      <p>Une page 100% lecture seule, pensée pour le téléphone : chaque pilote apparaît sous forme de carte avec sa position, son dossard, son nom et son club, son temps final, et surtout une rangée de pastilles montrant le <strong>temps de chaque spéciale individuellement</strong> (avec un petit repère ⚠ en cas de pénalité, ou Ø en cas de neutralisation).</p>
+
+      <div class="feature-grid">
+        <div class="feature-card"><div class="fc-icon">🔍</div><h4>Recherche &amp; filtres</h4><p>Recherche par nom/dossard, filtres catégorie et sexe, tri au choix (général ou par spéciale).</p></div>
+        <div class="feature-card"><div class="fc-icon">📶</div><h4>Indicateur de connexion</h4><p>« En direct » ou « Connexion perdue », pour que les spectateurs sachent si ce qu'ils voient est à jour.</p></div>
+        <div class="feature-card"><div class="fc-icon">🙈</div><h4>Message d'attente</h4><p>S'affiche automatiquement quand vous activez « Masquer le classement public » depuis l'administration.</p></div>
+      </div>
+
+      <div class="callout callout-tip">
+        <span class="icon">💡</span>
+        <div><strong>Partager le lien facilement</strong>Générez un QR code pointant vers l'adresse de <code>public.html</code> et affichez-le sur le panneau d'accueil ou près de la ligne d'arrivée : les spectateurs suivent le classement en direct sur leur propre téléphone, sans rien installer.</div>
+      </div>
+    </section>
+
+    <!-- ============== 08 MODE HORS-LIGNE ============== -->
+    <section id="horsligne" class="nb-section">
+      <div class="nb-section-head"><span class="plate">08</span><h2>Mode hors-ligne</h2></div>
+      <p class="nb-eyebrow">Conçu pour la forêt : le réseau y est rarement fiable.</p>
+
+      <p>Le point vert/rouge en haut de l'écran d'administration indique l'état de la connexion. En cas de coupure :</p>
+      <ol class="steps">
+        <li>Toutes vos actions (départ, arrivée, ajout de pilote, import…) continuent de fonctionner normalement et s'affichent immédiatement à l'écran.</li>
+        <li>Elles sont enregistrées dans une <strong>file d'attente locale</strong> sur l'appareil, avec l'heure exacte de l'action (donc aucune perte de précision de chronométrage).</li>
+        <li>Un badge « X en attente » apparaît à côté du point de connexion pour vous tenir informé.</li>
+        <li>Dès que le réseau revient, la file d'attente se synchronise automatiquement avec les autres postes. Vous pouvez aussi forcer cette synchronisation depuis Outils.</li>
+      </ol>
+
+      <div class="callout callout-info">
+        <span class="icon">📱</span>
+        <div><strong>Et si l'appareil redémarre pendant la coupure ?</strong>Aucun problème : la file d'attente et la liste des pilotes sont conservées sur l'appareil (pas seulement en mémoire), donc même une fermeture accidentelle de l'onglet ou un redémarrage ne fait perdre aucune donnée.</div>
+      </div>
+    </section>
+
+    <!-- ============== 09 PERSONNALISATION ============== -->
+    <section id="personnalisation" class="nb-section">
+      <div class="nb-section-head"><span class="plate">09</span><h2>Personnalisation</h2></div>
+      <p class="nb-eyebrow">Mettre le logo du club sur l'application.</p>
+
+      <p>Déposez un fichier nommé exactement <code>logoclub.png</code> à la racine du projet, au même endroit que <code>index.html</code> et <code>public.html</code>. Il apparaîtra automatiquement dans l'en-tête de l'administration <em>et</em> de l'écran public, sans aucune autre manipulation.</p>
+      <div class="callout callout-tip">
+        <span class="icon">💡</span>
+        <div><strong>Pas de logo pour l'instant ?</strong>Aucun souci : tant que le fichier n'existe pas, l'emplacement du logo disparaît proprement, sans image cassée ni espace vide inesthétique.</div>
+      </div>
+    </section>
+
+    <!-- ============== FAQ / DÉPANNAGE ============== -->
+    <section id="depannage" class="nb-section">
+      <div class="nb-section-head"><span class="plate">?</span><h2>Dépannage / FAQ</h2></div>
+      <p class="nb-eyebrow">Cliquez sur une question pour afficher la réponse.</p>
+
+      <div id="accordion"></div>
+    </section>
+
+    <!-- ============== PENSE-BÊTE IMPRIMABLE ============== -->
+    <section id="pensebete" class="nb-section">
+      <div class="nb-section-head"><span class="plate">🖨</span><h2>Pense-bête à imprimer</h2></div>
+      <p class="nb-eyebrow">Une version condensée à glisser dans le classeur de course. Utilisez le bouton « Imprimer » en haut de la page.</p>
+
+      <div class="cheat-grid">
+        <div class="cheat-card">
+          <h4>🚀 Poste Haut (Départ)</h4>
+          <ul>
+            <li>Choisir la spéciale</li>
+            <li>Taper le dossard</li>
+            <li>Vérifier la fiche affichée</li>
+            <li>Appuyer sur TOP DÉPART</li>
+          </ul>
+        </div>
+        <div class="cheat-card">
+          <h4>🏁 Poste Bas (Arrivée)</h4>
+          <ul>
+            <li>Choisir la spéciale</li>
+            <li>Cliquer le pilote dans la liste (ou saisie manuelle)</li>
+            <li>Appuyer sur VALIDER ARRIVÉE</li>
+          </ul>
+        </div>
+        <div class="cheat-card">
+          <h4>♻️ Pilote à réinitialiser</h4>
+          <ul>
+            <li>Pilotes → ouvrir sa fiche</li>
+            <li>Onglet « Temps de course »</li>
+            <li>Bouton Reset pilote</li>
+          </ul>
+        </div>
+        <div class="cheat-card">
+          <h4>🙈 Masquer le classement public</h4>
+          <ul>
+            <li>Tableau de bord ou Outils</li>
+            <li>Bouton « Masquer le classement public »</li>
+            <li>Recliquer pour réafficher</li>
+          </ul>
+        </div>
+        <div class="cheat-card">
+          <h4>⇩ Exporter les résultats</h4>
+          <ul>
+            <li>Classement ou Outils</li>
+            <li>Bouton « Exporter le classement (Excel) »</li>
+            <li>Respecte les filtres actifs</li>
+          </ul>
+        </div>
+        <div class="cheat-card">
+          <h4>🔄 Forcer une synchronisation</h4>
+          <ul>
+            <li>Outils → Synchronisation</li>
+            <li>Bouton « Forcer la synchronisation »</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="nb-footer">TRJV Enduro — Notice d'utilisation · OVTT Lillebonne</footer>
+  </main>
+</div>
+
+<button type="button" class="scroll-top-btn" id="btn-scroll-top" aria-label="Retour en haut">↑</button>
+
+<script>
+/* ================================================================== */
+/* BARRE DE PROGRESSION                                                */
+/* ================================================================== */
+function updateProgressBar() {
+  const doc = document.documentElement;
+  const scrollTop = doc.scrollTop || document.body.scrollTop;
+  const scrollHeight = (doc.scrollHeight || document.body.scrollHeight) - doc.clientHeight;
+  const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+  document.getElementById("progress-bar").style.width = pct + "%";
+  document.getElementById("btn-scroll-top").classList.toggle("visible", scrollTop > 500);
+}
+document.addEventListener("scroll", () => window.requestAnimationFrame(updateProgressBar), { passive: true });
+updateProgressBar();
+document.getElementById("btn-scroll-top").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+/* ================================================================== */
+/* SOMMAIRE — scrollspy + tiroir mobile                                */
+/* ================================================================== */
+const tocLinks = Array.from(document.querySelectorAll(".nb-toc a"));
+const sections = tocLinks.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) entry.target.classList.add("in-view");
+  });
+}, { threshold: 0.08 });
+sections.forEach((s) => observer.observe(s));
+
+const spy = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (!entry.isIntersecting) return;
+    const id = entry.target.id;
+    tocLinks.forEach((a) => a.classList.toggle("active", a.getAttribute("href") === "#" + id));
+  });
+}, { rootMargin: "-40% 0px -55% 0px" });
+sections.forEach((s) => spy.observe(s));
+
+const tocEl = document.getElementById("nb-toc");
+const backdropEl = document.getElementById("nb-backdrop");
+function openDrawer() { tocEl.classList.add("open"); backdropEl.classList.add("open"); }
+function closeDrawer() { tocEl.classList.remove("open"); backdropEl.classList.remove("open"); }
+document.getElementById("btn-nb-menu").addEventListener("click", openDrawer);
+document.getElementById("btn-nb-drawer-close").addEventListener("click", closeDrawer);
+backdropEl.addEventListener("click", closeDrawer);
+tocLinks.forEach((a) => a.addEventListener("click", closeDrawer));
+
+/* ================================================================== */
+/* CHECKLIST INTERACTIVE (00)                                          */
+/* ================================================================== */
+const checklistItems = Array.from(document.querySelectorAll("#checklist-list li"));
+function updateChecklist() {
+  const done = checklistItems.filter((li) => li.querySelector("input").checked).length;
+  document.getElementById("checklist-count").textContent = `${done} / ${checklistItems.length}`;
+  document.getElementById("checklist-fill").style.width = `${(done / checklistItems.length) * 100}%`;
+}
+checklistItems.forEach((li) => {
+  const input = li.querySelector("input");
+  li.addEventListener("click", (e) => {
+    if (e.target !== input) input.checked = !input.checked;
+    li.classList.toggle("done", input.checked);
+    updateChecklist();
+  });
+});
+
+/* ================================================================== */
+/* ONGLETS DE DÉMONSTRATION (Haut / Bas)                               */
+/* ================================================================== */
+document.querySelectorAll(".demo-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".demo-tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+    document.querySelectorAll(".demo-pane").forEach((p) => p.classList.toggle("active", p.dataset.demoPane === btn.dataset.demoTab));
+  });
+});
+
+/* ================================================================== */
+/* DÉMONSTRATION — poste de départ (saisie dossard en direct)          */
+/* ================================================================== */
+const DEMO_RIDERS = {
+  "12": { nom: "MARTIN", prenom: "Lucas", cat: "U13", club: "OVTT Lillebonne" },
+  "7": { nom: "DUBOIS", prenom: "Emma", cat: "U15", club: "VTT Caux Vallée" },
+  "99": { nom: "PETIT", prenom: "Nathan", cat: "U11", club: "Team Falaise" }
+};
+const demoInput = document.getElementById("demo-dossard-input");
+const demoResult = document.getElementById("demo-result");
+
+function renderDemoResult() {
+  const val = demoInput.value.trim();
+  const rider = DEMO_RIDERS[val];
+  if (!rider) {
+    demoResult.innerHTML = `<div class="demo-empty">${val ? "Aucun pilote de démo avec ce dossard — essayez 12, 7 ou 99." : "Tapez un dossard pour afficher sa fiche."}</div>`;
+    return;
+  }
+  demoResult.innerHTML = `
+    <div class="demo-card">
+      <div class="name">#${val} — ${rider.nom} ${rider.prenom}</div>
+      <div class="meta">${rider.cat} · ${rider.club}</div>
+      <button type="button" class="demo-btn-go" id="demo-go-btn">TOP DÉPART</button>
+    </div>
+  `;
+  document.getElementById("demo-go-btn").addEventListener("click", () => {
+    const now = new Date().toLocaleTimeString("fr-FR");
+    demoResult.innerHTML += `<div class="demo-toast">✅ Départ enregistré à ${now} (démonstration)</div>`;
+    setTimeout(() => { demoInput.value = ""; renderDemoResult(); demoInput.focus(); }, 1400);
+  });
+}
+demoInput.addEventListener("input", renderDemoResult);
+renderDemoResult();
+
+/* ================================================================== */
+/* DÉMONSTRATION — diffusion publique (interrupteur visible/masqué)    */
+/* ================================================================== */
+const publicSwitch = document.getElementById("demo-public-switch");
+const publicScreen = document.getElementById("demo-public-screen");
+const publicLabel = document.getElementById("demo-switch-label");
+let demoPublicHidden = false;
+
+function renderDemoPublic() {
+  publicSwitch.classList.toggle("on", demoPublicHidden);
+  publicLabel.textContent = demoPublicHidden ? "Classement MASQUÉ" : "Classement VISIBLE";
+  if (demoPublicHidden) {
+    publicScreen.innerHTML = `
+      <div class="demo-public-hidden">
+        <span class="dp-icon">🏁</span>
+        Résultats momentanément masqués.<br>Revenez dans quelques instants !
+      </div>`;
+  } else {
+    publicScreen.innerHTML = `
+      <div class="dp-title">Classement en direct</div>
+      <div class="demo-public-card"><b>#12</b> MARTIN Lucas — 2:14.3</div>
+      <div class="demo-public-card"><b>#7</b> DUBOIS Emma — 2:19.8</div>
+      <div class="demo-public-card"><b>#99</b> PETIT Nathan — 2:25.1</div>`;
+  }
+}
+publicSwitch.addEventListener("click", () => { demoPublicHidden = !demoPublicHidden; renderDemoPublic(); });
+renderDemoPublic();
+
+/* ================================================================== */
+/* ACCORDÉON — FAQ / dépannage                                         */
+/* ================================================================== */
+const FAQ = [
+  {
+    q: "Je supprime un pilote et recrée le même dossard : ses anciens temps réapparaissent-ils ?",
+    r: "Non — supprimer un pilote efface aussi tous ses temps et son historique. S'il s'agit du même pilote qui doit simplement recommencer sa course, utilisez plutôt « Reset pilote » (fiche pilote → Temps de course) : plus rapide, et vous gardez son nom et son historique."
+  },
+  {
+    q: "Le badge « en attente » ne descend pas, la synchronisation semble bloquée.",
+    r: "Vérifiez d'abord le point de connexion en haut de l'écran. S'il est rouge, le réseau est coupé — c'est normal, tout se synchronisera au retour. S'il est vert et que le badge ne bouge pas, utilisez le bouton « Forcer la synchronisation » dans l'onglet Outils."
+  },
+  {
+    q: "Un pilote apparaît en double, ou avec un dossard bizarre.",
+    r: "C'est généralement dû à un import Excel avec une colonne mal reconnue. Ouvrez sa fiche dans Pilotes pour corriger directement les champs, ou supprimez la fiche en trop si c'est un vrai doublon."
+  },
+  {
+    q: "Le classement public ne bouge plus alors que je pointe des temps.",
+    r: "Vérifiez que le classement public n'est pas resté en mode « masqué » depuis un essai précédent (bouton dans le Tableau de bord ou dans Outils). Vérifiez aussi la connexion sur l'appareil qui affiche public.html."
+  },
+  {
+    q: "Comment retrouver un pilote si le réseau est complètement coupé sur le terrain ?",
+    r: "Chaque appareil garde en mémoire locale la liste des pilotes déjà chargée. Utilisez le champ de saisie manuelle du dossard (poste Bas) ou tapez directement le dossard (poste Haut) : la fiche s'affiche depuis le cache local, sans avoir besoin du réseau."
+  },
+  {
+    q: "Comment exporter les résultats finaux pour les imprimer ou les envoyer à la fédération ?",
+    r: "Onglet Classement (ou Outils) → bouton « Exporter le classement (Excel) ». L'export respecte les filtres actifs à ce moment-là : pensez à les retirer si vous voulez tous les pilotes."
+  },
+  {
+    q: "Puis-je utiliser plusieurs téléphones/tablettes en même temps sur des postes différents ?",
+    r: "Oui, c'est même l'usage prévu : chaque poste (Haut/Bas de chaque spéciale) peut être tenu par un appareil différent. Tous se synchronisent via Firebase en temps réel dès qu'ils ont du réseau."
+  },
+  {
+    q: "Comment changer le logo du club une fois la course commencée ?",
+    r: "Remplacez simplement le fichier logoclub.png à la racine du projet par le nouveau fichier, en gardant exactement le même nom. Il se met à jour au prochain chargement de la page."
+  }
+];
+const accordionRoot = document.getElementById("accordion");
+FAQ.forEach((item, i) => {
+  const el = document.createElement("div");
+  el.className = "accordion-item";
+  el.innerHTML = `
+    <button type="button" class="accordion-trigger" aria-expanded="false">
+      <span>${item.q}</span><span class="chevron">▾</span>
+    </button>
+    <div class="accordion-panel"><div class="accordion-panel-inner">${item.r}</div></div>
+  `;
+  const trigger = el.querySelector(".accordion-trigger");
+  trigger.addEventListener("click", () => {
+    const isOpen = el.classList.contains("open");
+    document.querySelectorAll(".accordion-item.open").forEach((openEl) => {
+      openEl.classList.remove("open");
+      openEl.querySelector(".accordion-trigger").setAttribute("aria-expanded", "false");
+    });
+    if (!isOpen) { el.classList.add("open"); trigger.setAttribute("aria-expanded", "true"); }
+  });
+  accordionRoot.appendChild(el);
+});
+</script>
+</body>
+</html>

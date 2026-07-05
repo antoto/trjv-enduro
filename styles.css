@@ -7,18 +7,18 @@
    ============================================================ */
 
 :root {
-  --bg: #10161A;
-  --bg-panel: #1A2228;
-  --bg-panel-raised: #212B32;
-  --line: #2C383F;
-  --text: #EDEAE2;
-  --text-dim: #93A1A8;
-  --orange: #FF6A1A;   /* en course / action */
-  --orange-dim: #7A3512;
-  --green: #4FA972;    /* arrivé / connecté */
-  --green-dim: #1F4430;
-  --amber: #E8B93A;    /* instable / attention */
-  --red: #E5484D;      /* hors ligne / erreur */
+  --bg: #F1F4F8;
+  --bg-panel: #FFFFFF;
+  --bg-panel-raised: #EEF2F6;
+  --line: #DEE4EC;
+  --text: #1B2433;
+  --text-dim: #66707F;
+  --orange: #C2570A;   /* en course / action */
+  --orange-dim: #FBE7D3;
+  --green: #1F9254;    /* arrivé / connecté */
+  --green-dim: #E1F6EA;
+  --amber: #B9840A;    /* instable / attention */
+  --red: #D64541;      /* hors ligne / erreur */
   --font-display: 'Rajdhani', 'Segoe UI', sans-serif;
   --font-body: 'Inter', 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
@@ -376,7 +376,7 @@ tbody tr:hover { background: var(--bg-panel-raised); }
   border-radius: 8px;
   padding: 12px 14px;
   font-size: 0.9rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 24px rgba(20,30,50,0.16);
   animation: toastIn 0.2s ease;
 }
 .toast.success { border-left-color: var(--green); }
@@ -659,8 +659,6 @@ thead th.sorted { color: var(--orange); }
   max-width: 120px;
   object-fit: contain;
   border-radius: 6px;
-  background: #fff;
-  padding: 2px;
 }
 .page-tag {
   font-family: var(--font-display);
@@ -841,3 +839,18 @@ main {
   .public-header h1 { font-size: 1.4rem; }
   .club-logo { height: 30px; }
 }
+
+/* ============================================================
+   AJOUTS V5 — message affiché quand l'organisation masque le
+   classement public (remise des prix, vérifications en cours…).
+   ============================================================ */
+
+.public-hidden-message {
+  text-align: center;
+  padding: 70px 20px;
+  max-width: 480px;
+  margin: 40px auto;
+}
+.public-hidden-icon { font-size: 3.2rem; margin-bottom: 12px; }
+.public-hidden-message h2 { color: var(--text); margin-bottom: 10px; }
+.public-hidden-message p { color: var(--text-dim); line-height: 1.6; }

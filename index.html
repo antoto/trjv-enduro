@@ -7,22 +7,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="admin.css">
-
-  <link rel="apple-touch-icon" href="logo.png">
-<link rel="icon" href="logo.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="TRJV Admin">
 </head>
 <body>
 
 <header class="topbar">
+  <button type="button" id="btn-mobile-menu" class="mobile-menu-btn" aria-label="Ouvrir le menu">☰</button>
   <div class="brand-group">
     <img src="logoclub.png" alt="Logo du club" class="club-logo" onerror="this.remove()">
     <div class="brand">TRJV <span>ENDURO</span></div>
   </div>
   <nav class="tabs">
+    <button type="button" id="btn-close-drawer" class="drawer-close-btn" aria-label="Fermer le menu">✕</button>
     <button class="tab-btn active" data-tab="dashboard"><span class="tab-icon">🏠</span>Tableau de bord</button>
     <button class="tab-btn" data-tab="parametres"><span class="tab-icon">⚙️</span>Course</button>
     <button class="tab-btn" data-tab="pilotes"><span class="tab-icon">🧑‍🤝‍🧑</span>Pilotes</button>
@@ -36,6 +31,7 @@
     <span class="queue-badge hidden" id="queue-badge">0 en attente</span>
   </div>
 </header>
+<div id="nav-backdrop"></div>
 
 <main>
 
@@ -46,7 +42,10 @@
         <h2 id="dash-event-name">Chargement…</h2>
         <p class="subtitle" id="dash-event-meta"></p>
       </div>
-      <button class="btn btn-secondary" data-tab-link="parametres">Modifier la course</button>
+      <div class="dash-header-actions">
+        <button class="btn btn-secondary" id="btn-toggle-public">🙈 Masquer le classement public</button>
+        <button class="btn btn-secondary" data-tab-link="parametres">Modifier la course</button>
+      </div>
     </div>
 
     <div class="dashboard-grid">
@@ -241,11 +240,11 @@
         </div>
 
         <div class="modal-pane" data-modal-pane="temps">
-          <p class="subtitle">Modifiez librement départ, arrivée, pénalité, neutralisation ou liaison. Le classement est recalculé et synchronisé immédiatement à l'enregistrement. Laissez une ligne vide pour effacer le passage sur cette spéciale.</p>
+          <p class="subtitle">Personnalisez directement le temps réalisé sur chaque spéciale (format mm:ss ou h:mm:ss). Le classement est recalculé et synchronisé immédiatement à l'enregistrement. Laissez le champ vide pour effacer le passage sur cette spéciale.</p>
           <form id="rd-timing-form">
             <div class="table-wrap rd-timing-table">
               <table>
-                <thead><tr><th>Spéciale</th><th>Départ</th><th>Arrivée</th><th>Réalisé</th><th>Pénal. (s)</th><th>Neutral. (s)</th><th>Liaison (min)</th></tr></thead>
+                <thead><tr><th>Spéciale</th><th>Statut</th><th>Temps réalisé</th></tr></thead>
                 <tbody id="rd-timing-tbody"></tbody>
               </table>
             </div>
@@ -281,29 +280,37 @@
         <strong id="chrono-poste-label" class="display"></strong>
       </div>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="chrono-search">Rechercher un pilote (liste)</label>
-          <input type="search" id="chrono-search" placeholder="Nom ou dossard…">
-        </div>
-        <div class="field">
-          <label for="chrono-manual-dossard">Saisie manuelle du dossard (secours réseau)</label>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="chrono-manual-dossard" inputmode="numeric" placeholder="N° dossard">
-            <button type="button" class="btn btn-secondary" id="chrono-manual-dossard-btn">Charger</button>
-          </div>
+      <!-- Mode DÉPART (Haut) : un seul champ pour le dossard, rien d'autre à chercher.
+           Le pilote tape le numéro, la fiche s'affiche automatiquement, il appuie sur TOP DÉPART. -->
+      <div id="chrono-haut-block">
+        <div class="haut-entry-panel">
+          <label for="chrono-dossard-haut">Numéro de dossard du pilote au départ</label>
+          <input type="text" id="chrono-dossard-haut" inputmode="numeric" autocomplete="off" placeholder="Ex : 42" class="dossard-input-lg">
         </div>
       </div>
 
-      <div class="chrono-grid two-col">
-        <div>
-          <h3 style="margin-bottom:10px;">Liste des pilotes</h3>
-          <div class="rider-list" id="chrono-rider-list"></div>
+      <!-- Mode ARRIVÉE (Bas) : liste des pilotes actuellement en course + recherche + secours réseau. -->
+      <div id="chrono-bas-block">
+        <div class="field-row">
+          <div class="field">
+            <label for="chrono-search">Rechercher un pilote (liste)</label>
+            <input type="search" id="chrono-search" placeholder="Nom ou dossard…">
+          </div>
+          <div class="field">
+            <label for="chrono-manual-dossard">Saisie manuelle du dossard (secours réseau)</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="chrono-manual-dossard" inputmode="numeric" placeholder="N° dossard">
+              <button type="button" class="btn btn-secondary" id="chrono-manual-dossard-btn">Charger</button>
+            </div>
+          </div>
         </div>
-        <div>
-          <h3 style="margin-bottom:10px;">Confirmation</h3>
-          <div id="chrono-confirm-panel"></div>
-        </div>
+        <h3 style="margin-bottom:10px;">Pilotes en course</h3>
+        <div class="rider-list" id="chrono-rider-list"></div>
+      </div>
+
+      <div class="chrono-confirm-section">
+        <h3 style="margin-bottom:10px;">Confirmation</h3>
+        <div id="chrono-confirm-panel"></div>
       </div>
     </div>
   </section>
@@ -350,6 +357,13 @@
 
   <!-- ============== OUTILS ============== -->
   <section id="view-outils" class="view">
+    <div class="panel">
+      <h2>Diffusion publique</h2>
+      <p class="subtitle">Masquez instantanément le classement affiché sur <code>public.html</code> (par exemple pendant une remise des prix) : les visiteurs verront un simple message d'attente à la place des temps, sans rien voir défiler entre-temps.</p>
+      <p id="outils-public-status" class="subtitle">Chargement…</p>
+      <button class="btn btn-secondary" id="btn-toggle-public-outils">🙈 Masquer le classement public</button>
+    </div>
+
     <div class="panel">
       <h2>Anomalies détectées</h2>
       <p class="subtitle">Détection automatique : arrivée sans départ, pilote en course trop longtemps, dossard inconnu, doublons…</p>
