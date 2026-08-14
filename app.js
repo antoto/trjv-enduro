@@ -17,7 +17,21 @@ import {
   clearTimingEntry,
   resetRiderTiming,
   addHistoryEntry,
-  watchHistory
+  watchHistory,
+  watchAuthState,
+  login,
+  logout,
+  createOperatorAccount,
+  watchMyProfile,
+  createUserProfile,
+  setEventMember,
+  removeEventMember,
+  watchEventMembers,
+  createEvent,
+  watchAllEvents,
+  watchEventMeta,
+  getActiveEvent,
+  setActiveEvent
 } from "./firebase.js";
 import { parseRidersExcel, findExistingDossardConflicts } from "./import.js";
 import { exportClassementToExcel } from "./export.js";
@@ -36,12 +50,28 @@ const state = {
   connection: "offline",
   chrono: { sp: null, poste: "haut", selectedDossard: null },
   classement: { search: "", categorie: "", sexe: "", sortKey: "positionGenerale", sortDir: "asc" },
-  detail: { dossard: null, unwatchHistory: null, history: {} }
+  detail: { dossard: null, unwatchHistory: null, history: {} },
+  auth: {
+    user: null,           // objet Firebase Auth courant
+    profile: null,        // { isGlobalAdmin, events: { [eventId]: role }, email }
+    events: [],           // épreuves accessibles à l'utilisateur courant : { id, meta }
+    eventMetaUnsubs: {},  // (non admin-global) désabonnements par épreuve suivie individuellement
+    currentRole: null,    // "admin" | "operator" | "global" pour l'épreuve active
+    members: {}
+  }
 };
 
-const QUEUE_KEY = "trjv_offline_queue_v2";
-const RIDERS_CACHE_KEY = "trjv_riders_cache_v1";
-const TIMING_CACHE_KEY = "trjv_timing_cache_v1";
+/** Accès complet (paramètres, pilotes, suppression, équipe) ? Sinon : opérateur limité au chronométrage/pointage. */
+function hasFullAccess() {
+  return state.auth.currentRole === "global" || state.auth.currentRole === "admin";
+}
+
+const QUEUE_KEY_BASE = "trjv_offline_queue_v2";
+const RIDERS_CACHE_KEY_BASE = "trjv_riders_cache_v1";
+const TIMING_CACHE_KEY_BASE = "trjv_timing_cache_v1";
+/** Toutes les clés de cache local sont suffixées par l'épreuve active : indispensable pour que
+ * le mode hors-ligne ne mélange jamais les données de deux épreuves sur le même appareil. */
+function scopedKey(base) { return `${base}_${getActiveEvent() || "none"}`; }
 
 /* ================================================================== */
 /* UTILITAIRES DOM / FORMAT                                            */
@@ -129,11 +159,11 @@ function parseDurationToMs(str) {
 /* ================================================================== */
 
 function loadQueue() {
-  try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
+  try { return JSON.parse(localStorage.getItem(scopedKey(QUEUE_KEY_BASE))) || []; }
   catch { return []; }
 }
 function saveQueue(queue) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  localStorage.setItem(scopedKey(QUEUE_KEY_BASE), JSON.stringify(queue));
   updateQueueBadge(queue.length);
 }
 function enqueue(op) {
@@ -183,13 +213,13 @@ async function flushQueue() {
   }
 }
 
-function cacheRiders(riders) { localStorage.setItem(RIDERS_CACHE_KEY, JSON.stringify(riders)); }
+function cacheRiders(riders) { localStorage.setItem(scopedKey(RIDERS_CACHE_KEY_BASE), JSON.stringify(riders)); }
 function readRidersCache() {
-  try { return JSON.parse(localStorage.getItem(RIDERS_CACHE_KEY)) || {}; } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(scopedKey(RIDERS_CACHE_KEY_BASE))) || {}; } catch { return {}; }
 }
-function cacheTiming(timing) { localStorage.setItem(TIMING_CACHE_KEY, JSON.stringify(timing)); }
+function cacheTiming(timing) { localStorage.setItem(scopedKey(TIMING_CACHE_KEY_BASE), JSON.stringify(timing)); }
 function readTimingCache() {
-  try { return JSON.parse(localStorage.getItem(TIMING_CACHE_KEY)) || {}; } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(scopedKey(TIMING_CACHE_KEY_BASE))) || {}; } catch { return {}; }
 }
 
 /** Journalise un événement pour un pilote (création, départ, modification, reset…), même hors ligne. */
@@ -232,15 +262,40 @@ function switchTab(tabName) {
   $all(".view").forEach((v) => v.classList.toggle("active", v.id === `view-${tabName}`));
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   closeMobileMenu();
+  // Le focus du champ dossard (poste Haut) est déclenché ICI, dans un gestionnaire de clic
+  // direct de l'utilisateur, et nulle part ailleurs : c'est ce qui permet au clavier virtuel
+  // iOS/Android de s'ouvrir (un focus() programmatique hors d'un geste utilisateur direct ne
+  // déclenche pas le clavier sur iOS Safari — voir focusChronoHautInputIfRelevant()).
+  if (tabName === "chrono") focusChronoHautInputIfRelevant();
+  if (tabName === "equipe") renderEquipeView();
+}
+
+/**
+ * Focus le champ de saisie du dossard (poste Haut / départ) UNIQUEMENT en réaction à une
+ * action explicite de l'utilisateur (changement d'onglet, bascule de poste, accès rapide
+ * depuis le tableau de bord) — jamais depuis un listener Firebase temps réel, qui s'exécute
+ * de façon asynchrone et hors contexte de geste utilisateur (le clavier mobile ne s'ouvrirait
+ * pas dans ce cas sur iOS Safari).
+ */
+function focusChronoHautInputIfRelevant() {
+  if (state.chrono.poste !== "haut") return;
+  const hautInput = $("#chrono-dossard-haut");
+  if (hautInput && document.activeElement !== hautInput) {
+    // Léger délai pour laisser le temps au navigateur de terminer le changement d'onglet
+    // (affichage du bloc) avant de poser le focus — évite les cas où l'input est encore masqué.
+    setTimeout(() => hautInput.focus({ preventScroll: true }), 0);
+  }
 }
 
 function openMobileMenu() {
   $(".tabs")?.classList.add("open");
   $("#nav-backdrop")?.classList.add("open");
+  document.body.classList.add("drawer-open");
 }
 function closeMobileMenu() {
   $(".tabs")?.classList.remove("open");
   $("#nav-backdrop")?.classList.remove("open");
+  document.body.classList.remove("drawer-open");
 }
 
 function initTabs() {
@@ -308,7 +363,7 @@ function renderDashboard() {
       state.chrono.sp = btn.dataset.sp;
       state.chrono.poste = btn.dataset.poste;
       state.chrono.selectedDossard = null;
-      switchTab("chrono");
+      switchTab("chrono"); // déclenche déjà focusChronoHautInputIfRelevant()
       renderChronoView();
     }));
   }
@@ -450,7 +505,7 @@ function renderRidersTable() {
       <td class="mono dim">${r.licence || ""}</td>
       <td>
         <button class="btn btn-secondary btn-detail-rider" data-dossard="${r.dossard}">Détails</button>
-        <button class="btn btn-danger btn-delete-rider" data-dossard="${r.dossard}">Supprimer</button>
+        ${hasFullAccess() ? `<button class="btn btn-danger btn-delete-rider" data-dossard="${r.dossard}">Supprimer</button>` : ""}
       </td>
     </tr>
   `).join("");
@@ -776,6 +831,7 @@ function initChronoView() {
   });
   $all(".poste-toggle button").forEach((btn) => btn.addEventListener("click", () => {
     state.chrono.poste = btn.dataset.poste; state.chrono.selectedDossard = null; renderChronoView();
+    focusChronoHautInputIfRelevant();
   }));
   $("#chrono-search")?.addEventListener("input", renderChronoView);
   $("#chrono-manual-dossard-btn")?.addEventListener("click", () => {
@@ -891,9 +947,10 @@ function renderChronoView() {
   basBlock.classList.toggle("hidden", isHaut);
 
   if (isHaut) {
-    // Poste simplifié : un seul champ de saisie, focus automatique pour enchaîner les départs vite.
-    const hautInput = $("#chrono-dossard-haut");
-    if (hautInput && document.activeElement !== hautInput) hautInput.focus({ preventScroll: true });
+    // Poste simplifié : un seul champ de saisie. Le focus n'est PAS posé ici : cette fonction
+    // est aussi appelée depuis les listeners Firebase temps réel (watchTiming/watchRiders),
+    // qui s'exécutent hors de tout geste utilisateur — y poser un focus() y ouvrirait le
+    // curseur mais jamais le clavier virtuel sur iOS Safari. Voir focusChronoHautInputIfRelevant().
   } else {
     const search = ($("#chrono-search")?.value || "").toLowerCase().trim();
     const sp = state.chrono.sp;
@@ -1164,8 +1221,230 @@ function initOutilsView() {
 }
 
 /* ================================================================== */
+/* AUTHENTIFICATION                                                     */
+/* ================================================================== */
+
+let unwatchEventConfig = null, unwatchRiders = null, unwatchTiming = null, unwatchMembers = null;
+let unwatchProfile = null, unwatchAllEvents = null;
+let metaUnsubs = {};        // non-admin-global uniquement : { eventId: unsubscribeFn }
+let myEventsMetaMap = {};   // non-admin-global uniquement : { eventId: meta }
+
+function showAuthGate(show) { $("#auth-gate")?.classList.toggle("hidden", !show); }
+function showEventGate(show) { $("#event-gate")?.classList.toggle("hidden", !show); }
+
+function initAuthGate() {
+  $("#form-login")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("#login-email").value.trim();
+    const password = $("#login-password").value;
+    const errBox = $("#login-error");
+    errBox.classList.add("hidden");
+    try {
+      await login(email, password);
+      // watchAuthState() prend le relais automatiquement.
+    } catch (err) {
+      errBox.textContent = "Connexion impossible : email ou mot de passe incorrect.";
+      errBox.classList.remove("hidden");
+    }
+  });
+
+  $("#btn-logout")?.addEventListener("click", async () => {
+    closeMobileMenu();
+    await teardownEventSubscriptions();
+    await logout();
+  });
+
+  $("#btn-switch-event")?.addEventListener("click", () => { renderEventGate(); showEventGate(true); });
+  $("#btn-close-event-gate")?.addEventListener("click", () => showEventGate(false));
+
+  $("#form-create-event")?.addEventListener("submit", (e) => handleCreateEvent(e, "new-event-name", "new-event-date"));
+  $("#form-create-event-2")?.addEventListener("submit", (e) => handleCreateEvent(e, "new-event-name-2", "new-event-date-2"));
+}
+
+async function handleCreateEvent(e, nameFieldId, dateFieldId) {
+  e.preventDefault();
+  const name = $(`#${nameFieldId}`).value.trim();
+  const date = $(`#${dateFieldId}`).value.trim();
+  if (!name) return;
+  const eventId = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now().toString(36);
+  try {
+    await createEvent(eventId, { name, date, createdAt: Date.now() });
+    if (!state.auth.profile?.isGlobalAdmin) {
+      await setEventMember(eventId, state.auth.user.uid, state.auth.user.email, "admin");
+    }
+    toast(`Épreuve « ${name} » créée.`, "success");
+    e.target.reset();
+    await selectEvent(eventId);
+    showEventGate(false);
+  } catch (err) {
+    toast("Échec de la création de l'épreuve : " + err.message, "error");
+  }
+}
+
+/** Construit la liste des épreuves accessibles à l'utilisateur courant (déjà filtrée à la source :
+ * scan global pour un admin global, watchers individuels pour les autres — voir syncEventsList()). */
+function accessibleEvents() {
+  return state.auth.events;
+}
+
+function renderEventGate() {
+  const list = $("#event-gate-list");
+  const events = accessibleEvents();
+  const active = getActiveEvent();
+  if (!events.length) {
+    list.innerHTML = `<div class="empty-state">Aucune épreuve accessible pour le moment.</div>`;
+  } else {
+    list.innerHTML = events.map((ev) => `
+      <div class="event-card ${ev.id === active ? "active-event" : ""}" data-event-id="${ev.id}">
+        <div>
+          <div class="event-card-name">🏁 ${ev.meta?.name || ev.id}</div>
+          <div class="event-card-date">${ev.meta?.date || ""}</div>
+        </div>
+        ${ev.id === active ? '<span class="status-tag status-arrive">Active</span>' : ""}
+      </div>
+    `).join("");
+    $all(".event-card", list).forEach((card) => card.addEventListener("click", async () => {
+      await selectEvent(card.dataset.eventId);
+      showEventGate(false);
+    }));
+  }
+  $("#event-gate-create-wrap")?.classList.toggle("hidden", false);
+}
+
+async function selectEvent(eventId) {
+  await teardownEventSubscriptions();
+  setActiveEvent(eventId);
+  state.config = null; // évite d'afficher un instant le nom/les réglages de l'épreuve précédente
+  const myEvents = state.auth.profile?.events || {};
+  state.auth.currentRole = state.auth.profile?.isGlobalAdmin ? "global" : (myEvents[eventId] || null);
+  document.body.classList.toggle("role-operator", state.auth.currentRole === "operator");
+  const ev = state.auth.events.find((e) => e.id === eventId);
+  $("#event-switch-name").textContent = ev?.meta?.name || eventId;
+  startEventSubscriptions();
+}
+
+async function teardownEventSubscriptions() {
+  if (unwatchEventConfig) { unwatchEventConfig(); unwatchEventConfig = null; }
+  if (unwatchRiders) { unwatchRiders(); unwatchRiders = null; }
+  if (unwatchTiming) { unwatchTiming(); unwatchTiming = null; }
+  if (unwatchMembers) { unwatchMembers(); unwatchMembers = null; }
+}
+
+/* ================================================================== */
+/* ÉPREUVES & ÉQUIPE (onglet dédié)                                    */
+/* ================================================================== */
+
+function renderEquipeView() {
+  const globalPanel = $("#equipe-global-panel");
+  if (globalPanel) globalPanel.classList.toggle("hidden", !state.auth.profile?.isGlobalAdmin);
+
+  if (state.auth.profile?.isGlobalAdmin) {
+    const list = $("#equipe-events-list");
+    const active = getActiveEvent();
+    list.innerHTML = state.auth.events.map((ev) => `
+      <div class="event-card ${ev.id === active ? "active-event" : ""}" data-event-id="${ev.id}">
+        <div>
+          <div class="event-card-name">🏁 ${ev.meta?.name || ev.id}</div>
+          <div class="event-card-date">${ev.meta?.date || ""}</div>
+        </div>
+        ${ev.id === active ? '<span class="status-tag status-arrive">Active</span>' : '<span class="btn btn-secondary btn-sm">Basculer</span>'}
+      </div>
+    `).join("") || `<div class="empty-state">Aucune épreuve créée pour le moment.</div>`;
+    $all(".event-card", list).forEach((card) => card.addEventListener("click", () => selectEvent(card.dataset.eventId)));
+  }
+
+  renderEquipeMembersList();
+}
+
+function renderEquipeMembersList() {
+  const list = $("#equipe-members-list");
+  if (!list) return;
+  const members = state.auth.members || {};
+  const entries = Object.entries(members);
+  if (!entries.length) {
+    list.innerHTML = `<div class="empty-state">Aucun opérateur ajouté pour cette épreuve pour le moment.</div>`;
+    return;
+  }
+  list.innerHTML = entries.map(([uid, m]) => `
+    <div class="member-row">
+      <div>
+        <div class="member-email">${m.email}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="role-badge">${m.role === "admin" ? "Admin épreuve" : "Opérateur"}</span>
+        <button class="btn btn-danger btn-sm btn-remove-member" data-uid="${uid}">Retirer</button>
+      </div>
+    </div>
+  `).join("");
+  $all(".btn-remove-member", list).forEach((btn) => btn.addEventListener("click", async () => {
+    if (!confirm("Retirer cet opérateur de l'épreuve ? Son compte restera valide mais n'aura plus accès à cette épreuve.")) return;
+    try { await removeEventMember(getActiveEvent(), btn.dataset.uid); toast("Opérateur retiré.", "success"); }
+    catch (err) { toast("Échec : " + err.message, "error"); }
+  }));
+}
+
+function initEquipeView() {
+  $("#form-add-member")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("#member-email").value.trim();
+    const password = $("#member-password").value;
+    const role = $("#member-role").value;
+    const eventId = getActiveEvent();
+    if (!eventId) return;
+    try {
+      const uid = await createOperatorAccount(email, password);
+      await createUserProfile(uid, { email, isGlobalAdmin: false, events: { [eventId]: role } });
+      await setEventMember(eventId, uid, email, role);
+      toast(`Opérateur ${email} ajouté à l'épreuve.`, "success");
+      e.target.reset();
+    } catch (err) {
+      const msg = err.code === "auth/email-already-in-use"
+        ? "Un compte existe déjà avec cet email. Contactez l'admin global pour l'ajouter à cette épreuve depuis son compte existant."
+        : "Échec de la création du compte : " + err.message;
+      toast(msg, "error");
+    }
+  });
+}
+
+/* ================================================================== */
 /* INITIALISATION GÉNÉRALE                                             */
 /* ================================================================== */
+
+function startEventSubscriptions() {
+  // Recharge le cache local propre à CETTE épreuve (voir scopedKey) avant de rebrancher
+  // les listeners Firebase, pour ne jamais afficher un instant les données de l'épreuve précédente.
+  state.riders = readRidersCache();
+  state.timing = readTimingCache();
+
+  unwatchEventConfig = watchEventConfig((config) => {
+    if (config) {
+      state.config = config;
+      applyConfigToParametresForm(config);
+      renderChronoView(); renderClassementView(); renderDashboard(); renderOutilsAnomalies();
+    }
+  }) || null;
+
+  unwatchRiders = watchRiders((riders) => {
+    state.riders = riders;
+    cacheRiders(riders);
+    renderRidersTable(); renderChronoView(); renderClassementView(); renderDashboard(); renderOutilsAnomalies();
+  }) || null;
+
+  unwatchTiming = watchTiming((timing) => {
+    state.timing = timing;
+    cacheTiming(timing);
+    renderChronoView(); renderClassementView(); renderDashboard(); renderOutilsAnomalies();
+    if (state.detail.dossard) renderRiderDetailTiming();
+  }) || null;
+
+  unwatchMembers = watchEventMembers(getActiveEvent(), (members) => {
+    state.auth.members = members;
+    if ($("#view-equipe")?.classList.contains("active")) renderEquipeMembersList();
+  }) || null;
+
+  renderRidersTable(); renderChronoView(); renderClassementView(); renderDashboard(); renderOutilsAnomalies();
+}
 
 function initAdminApp() {
   state.riders = readRidersCache();
@@ -1179,29 +1458,108 @@ function initAdminApp() {
   initChronoView();
   initClassementView();
   initOutilsView();
+  initAuthGate();
+  initEquipeView();
 
-  watchEventConfig((config) => {
-    if (config) {
-      state.config = config;
-      applyConfigToParametresForm(config);
-      renderChronoView(); renderClassementView(); renderDashboard(); renderOutilsAnomalies();
+  watchAuthState(async (user) => {
+    state.auth.user = user;
+    if (!user) {
+      await teardownEventSubscriptions();
+      if (unwatchProfile) { unwatchProfile(); unwatchProfile = null; }
+      teardownEventsListSubscriptions();
+      state.auth.profile = null; state.auth.events = []; state.auth.currentRole = null;
+      showEventGate(false);
+      showAuthGate(true);
+      return;
     }
+    showAuthGate(false);
+    $("#account-btn-email").textContent = user.email || "";
+
+    unwatchProfile = watchMyProfile(user.uid, (profile) => {
+      const wasGlobalAdmin = state.auth.profile?.isGlobalAdmin;
+      state.auth.profile = profile || { isGlobalAdmin: false, events: {} };
+      // Si le statut admin-global change (rare), on refait les abonnements depuis zéro.
+      if (wasGlobalAdmin !== state.auth.profile.isGlobalAdmin) teardownEventsListSubscriptions();
+      syncEventsList();
+    }) || null;
+  });
+}
+
+/**
+ * Met en place la bonne stratégie d'écoute de la liste des épreuves, selon le rôle :
+ * - Admin global : un seul listener sur /events (autorisé par les règles de sécurité).
+ * - Sinon : un listener par épreuve à laquelle l'utilisateur a explicitement accès
+ *   (users/{uid}/events), seule lecture autorisée par les règles pour ce cas.
+ */
+function syncEventsList() {
+  if (!state.auth.profile) return;
+
+  if (state.auth.profile.isGlobalAdmin) {
+    teardownPerEventMetaWatchers();
+    if (!unwatchAllEvents) {
+      unwatchAllEvents = watchAllEvents((events) => {
+        state.auth.events = events;
+        reconcileEventAccess();
+      }) || null;
+    }
+    return;
+  }
+
+  if (unwatchAllEvents) { unwatchAllEvents(); unwatchAllEvents = null; }
+
+  const myEventIds = Object.keys(state.auth.profile.events || {});
+  const known = state.auth.eventMetaUnsubs;
+
+  // Désabonne les épreuves auxquelles on n'a plus accès.
+  Object.keys(known).forEach((id) => {
+    if (!myEventIds.includes(id)) { known[id](); delete known[id]; state.auth.events = state.auth.events.filter((e) => e.id !== id); }
   });
 
-  watchRiders((riders) => {
-    state.riders = riders;
-    cacheRiders(riders);
-    renderRidersTable(); renderChronoView(); renderClassementView(); renderDashboard(); renderOutilsAnomalies();
+  // Abonne les nouvelles épreuves accessibles.
+  myEventIds.forEach((id) => {
+    if (known[id]) return;
+    known[id] = watchEventMeta(id, (meta) => {
+      const idx = state.auth.events.findIndex((e) => e.id === id);
+      if (idx === -1) state.auth.events.push({ id, meta });
+      else state.auth.events[idx] = { id, meta };
+      reconcileEventAccess();
+    }) || (() => {});
   });
 
-  watchTiming((timing) => {
-    state.timing = timing;
-    cacheTiming(timing);
-    renderChronoView(); renderClassementView(); renderDashboard(); renderOutilsAnomalies();
-    if (state.detail.dossard) renderRiderDetailTiming();
-  });
+  if (!myEventIds.length) reconcileEventAccess();
+}
 
-  renderRidersTable(); renderChronoView(); renderClassementView(); renderDashboard(); renderOutilsAnomalies();
+function teardownPerEventMetaWatchers() {
+  Object.values(state.auth.eventMetaUnsubs).forEach((unsub) => unsub());
+  state.auth.eventMetaUnsubs = {};
+}
+function teardownEventsListSubscriptions() {
+  if (unwatchAllEvents) { unwatchAllEvents(); unwatchAllEvents = null; }
+  teardownPerEventMetaWatchers();
+  state.auth.events = [];
+}
+
+/**
+ * Appelé chaque fois que le profil utilisateur OU la liste des épreuves change.
+ * Décide automatiquement : rester sur l'épreuve déjà choisie si toujours valide,
+ * la sélectionner d'office s'il n'y en a qu'une seule accessible, sinon proposer
+ * le sélecteur.
+ */
+function reconcileEventAccess() {
+  if (!state.auth.profile) return; // profil pas encore chargé
+  const accessible = accessibleEvents();
+  const savedActive = getActiveEvent();
+  const stillValid = savedActive && accessible.some((e) => e.id === savedActive);
+
+  if (stillValid) {
+    if (!state.auth.currentRole) selectEvent(savedActive);
+  } else if (accessible.length === 1 && !state.auth.currentRole) {
+    selectEvent(accessible[0].id);
+  } else if (!state.auth.currentRole) {
+    renderEventGate();
+    showEventGate(true);
+  }
+  if ($("#view-equipe")?.classList.contains("active")) renderEquipeView();
 }
 
 if (document.getElementById("view-dashboard")) {

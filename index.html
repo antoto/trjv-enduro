@@ -19,12 +19,21 @@
   <nav class="tabs">
     <button type="button" id="btn-close-drawer" class="drawer-close-btn" aria-label="Fermer le menu">✕</button>
     <button class="tab-btn active" data-tab="dashboard"><span class="tab-icon">🏠</span>Tableau de bord</button>
-    <button class="tab-btn" data-tab="parametres"><span class="tab-icon">⚙️</span>Course</button>
+    <button class="tab-btn admin-only" data-tab="parametres"><span class="tab-icon">⚙️</span>Course</button>
     <button class="tab-btn" data-tab="pilotes"><span class="tab-icon">🧑‍🤝‍🧑</span>Pilotes</button>
     <button class="tab-btn" data-tab="chrono"><span class="tab-icon">⏱️</span>Chronométrage</button>
     <button class="tab-btn" data-tab="classement"><span class="tab-icon">🏆</span>Classement</button>
+    <button class="tab-btn admin-only" id="tab-btn-equipe" data-tab="equipe"><span class="tab-icon">🗂️</span>Épreuves &amp; équipe</button>
     <button class="tab-btn" data-tab="outils"><span class="tab-icon">🛠️</span>Outils</button>
   </nav>
+  <button type="button" class="event-switch-btn" id="btn-switch-event">
+    <span class="event-switch-label">Épreuve active</span>
+    <span class="event-switch-name" id="event-switch-name">—</span>
+  </button>
+  <button type="button" class="account-btn" id="btn-logout" title="Se déconnecter">
+    <span class="account-btn-email" id="account-btn-email"></span>
+    <span class="account-btn-icon">🚪</span>
+  </button>
   <div class="conn-indicator">
     <span class="dot" id="conn-dot"></span>
     <span id="conn-label">Connexion…</span>
@@ -32,6 +41,52 @@
   </div>
 </header>
 <div id="nav-backdrop"></div>
+
+<!-- ============== ÉCRAN DE CONNEXION (bloque tout tant que non authentifié) ============== -->
+<div id="auth-gate" class="modal-overlay">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header"><h2>🔒 Connexion</h2></div>
+    <p class="subtitle">Accès réservé aux administrateurs et opérateurs du chronométrage TRJV Enduro.</p>
+    <form id="form-login">
+      <div class="field" style="margin-bottom:12px;">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" required>
+      </div>
+      <div class="field" style="margin-bottom:16px;">
+        <label for="login-password">Mot de passe</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <p id="login-error" class="chrono-warning-note hidden"></p>
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Se connecter</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============== SÉLECTEUR / GESTION D'ÉPREUVE ACTIVE ============== -->
+<div id="event-gate" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:520px;">
+    <div class="modal-header">
+      <h2>🏁 Choisir l'épreuve active</h2>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-close-event-gate">✕ Fermer</button>
+    </div>
+    <p class="subtitle">Toute l'application (pilotes, chronométrage, classement…) travaillera dans le contexte de l'épreuve sélectionnée.</p>
+    <div id="event-gate-list"></div>
+    <div id="event-gate-create-wrap" class="hidden">
+      <h2 style="margin-top:18px;font-size:1.05rem;">➕ Créer une nouvelle épreuve</h2>
+      <form id="form-create-event" class="field-row" style="margin-top:10px;">
+        <div class="field">
+          <label for="new-event-name">Nom de l'épreuve</label>
+          <input type="text" id="new-event-name" placeholder="TRJV Enduro Lillebonne" required>
+        </div>
+        <div class="field">
+          <label for="new-event-date">Date</label>
+          <input type="text" id="new-event-date" placeholder="12/09/2026">
+        </div>
+        <button type="submit" class="btn btn-primary">Créer l'épreuve</button>
+      </form>
+    </div>
+  </div>
+</div>
 
 <main>
 
@@ -43,8 +98,8 @@
         <p class="subtitle" id="dash-event-meta"></p>
       </div>
       <div class="dash-header-actions">
-        <button class="btn btn-secondary" id="btn-toggle-public">🙈 Masquer le classement public</button>
-        <button class="btn btn-secondary" data-tab-link="parametres">Modifier la course</button>
+        <button class="btn btn-secondary admin-only" id="btn-toggle-public">🙈 Masquer le classement public</button>
+        <button class="btn btn-secondary admin-only" data-tab-link="parametres">Modifier la course</button>
       </div>
     </div>
 
@@ -126,8 +181,8 @@
       <div id="import-banner" class="import-banner hidden"></div>
 
       <div class="toolbar">
-        <button class="btn btn-primary" id="btn-add-rider">+ Ajouter un pilote</button>
-        <button class="btn btn-secondary" id="btn-import-excel">Importer Excel (FFC)</button>
+        <button class="btn btn-primary admin-only" id="btn-add-rider">+ Ajouter un pilote</button>
+        <button class="btn btn-secondary admin-only" id="btn-import-excel">Importer Excel (FFC)</button>
         <input type="file" id="import-file-input" accept=".xls,.xlsx" class="hidden">
         <div class="spacer"></div>
         <input type="search" id="riders-search" placeholder="Rechercher nom, dossard, club…" style="min-width:220px;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;">
@@ -232,7 +287,7 @@
               <div class="field"><label for="rd-club">Club</label><input type="text" id="rd-club"></div>
               <div class="field"><label for="rd-licence">N° licence</label><input type="text" id="rd-licence"></div>
             </div>
-            <div class="field-row">
+            <div class="field-row admin-only">
               <button type="submit" class="btn btn-primary">Enregistrer la fiche</button>
               <button type="button" class="btn btn-danger" id="btn-delete-rider-detail">Supprimer le pilote</button>
             </div>
@@ -250,7 +305,7 @@
             </div>
             <div class="field-row" style="margin-top:14px;">
               <button type="submit" class="btn btn-primary">Enregistrer les temps</button>
-              <button type="button" class="btn btn-danger" id="btn-reset-rider">♻️ Reset pilote (efface tous les temps)</button>
+              <button type="button" class="btn btn-danger admin-only" id="btn-reset-rider">♻️ Reset pilote (efface tous les temps)</button>
             </div>
           </form>
         </div>
@@ -361,7 +416,7 @@
       <h2>Diffusion publique</h2>
       <p class="subtitle">Masquez instantanément le classement affiché sur <code>public.html</code> (par exemple pendant une remise des prix) : les visiteurs verront un simple message d'attente à la place des temps, sans rien voir défiler entre-temps.</p>
       <p id="outils-public-status" class="subtitle">Chargement…</p>
-      <button class="btn btn-secondary" id="btn-toggle-public-outils">🙈 Masquer le classement public</button>
+      <button class="btn btn-secondary admin-only" id="btn-toggle-public-outils">🙈 Masquer le classement public</button>
     </div>
 
     <div class="panel">
@@ -382,10 +437,54 @@
       <button class="btn btn-primary btn-export-excel">⇩ Exporter le classement (Excel)</button>
     </div>
 
-    <div class="panel">
+    <div class="panel admin-only">
       <h2>Zone dangereuse</h2>
       <p class="subtitle">Réinitialiser TOUS les temps de TOUS les pilotes (utile avant un essai à blanc). Cette action est irréversible.</p>
       <button class="btn btn-danger" id="btn-reset-all-timing">⚠️ Réinitialiser tous les temps</button>
+    </div>
+  </section>
+
+  <!-- ============== ÉPREUVES & ÉQUIPE (visible : admin de l'épreuve + admin global) ============== -->
+  <section id="view-equipe" class="view">
+    <div class="panel" id="equipe-global-panel">
+      <h2>🏁 Toutes les épreuves</h2>
+      <p class="subtitle">Vue d'ensemble (administrateur global uniquement). Cliquez sur une épreuve pour y basculer.</p>
+      <div id="equipe-events-list"></div>
+      <form id="form-create-event-2" class="field-row" style="margin-top:14px;">
+        <div class="field">
+          <label for="new-event-name-2">Nom de la nouvelle épreuve</label>
+          <input type="text" id="new-event-name-2" placeholder="TRJV Enduro XXX" required>
+        </div>
+        <div class="field">
+          <label for="new-event-date-2">Date</label>
+          <input type="text" id="new-event-date-2" placeholder="12/09/2026">
+        </div>
+        <button type="submit" class="btn btn-primary">➕ Créer</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>👥 Équipe de l'épreuve active</h2>
+      <p class="subtitle">Les opérateurs ajoutés ici n'auront accès qu'à cette épreuve. Rôle « Admin épreuve » : accès complet à l'épreuve. Rôle « Opérateur » : chronométrage et pointage uniquement (pas de suppression de pilotes, pas de gestion d'équipe).</p>
+      <div id="equipe-members-list"></div>
+      <form id="form-add-member" class="field-row" style="margin-top:14px;">
+        <div class="field">
+          <label for="member-email">Email de l'opérateur</label>
+          <input type="email" id="member-email" required>
+        </div>
+        <div class="field">
+          <label for="member-password">Mot de passe initial</label>
+          <input type="text" id="member-password" placeholder="min. 6 caractères" required>
+        </div>
+        <div class="field" style="max-width:200px;">
+          <label for="member-role">Rôle</label>
+          <select id="member-role">
+            <option value="operator">Opérateur</option>
+            <option value="admin">Admin épreuve</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">➕ Ajouter</button>
+      </form>
     </div>
   </section>
 

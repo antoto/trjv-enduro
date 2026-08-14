@@ -1,0 +1,48 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true)"
+      }
+    },
+
+    "events": {
+      "$eventId": {
+        "meta": {
+          ".read": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).exists())",
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).val() === 'admin')"
+        },
+        "config": {
+          ".read": true,
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).val() === 'admin')"
+        },
+        "riders": {
+          ".read": true,
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).val() === 'admin')"
+        },
+        "timing": {
+          ".read": true,
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).exists())"
+        },
+        "history": {
+          ".read": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).exists())",
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).exists())"
+        },
+        "members": {
+          ".read": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).exists())",
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true || root.child('users').child(auth.uid).child('events').child($eventId).val() === 'admin')"
+        }
+      },
+      ".read": "auth != null && root.child('users').child(auth.uid).child('isGlobalAdmin').val() === true"
+    },
+
+    "config": { ".read": true, ".write": false },
+    "riders": { ".read": true, ".write": false },
+    "timing": { ".read": true, ".write": false },
+    "history": { ".read": true, ".write": false }
+  }
+}

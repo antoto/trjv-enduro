@@ -69,8 +69,14 @@
 </main>
 
 <script type="module">
-  import { watchConnection, watchEventConfig, watchRiders, watchTiming } from "./firebase.js";
+  import { watchConnection, watchEventConfig, watchRiders, watchTiming, setActiveEvent } from "./firebase.js";
   import { computeClassement, sortRows, spKeys } from "./classement.js";
+
+  // L'épreuve à afficher est choisie via l'URL : public.html?event=lillebonne-2026
+  // (le lien exact est fourni par l'organisateur de chaque épreuve).
+  const params = new URLSearchParams(window.location.search);
+  const eventId = params.get("event");
+  if (eventId) setActiveEvent(eventId);
 
   const state = {
     config: null, riders: {}, timing: {},
@@ -100,20 +106,29 @@
   function statutLabel(s) { return s === "ATTENTE" ? "En attente" : s === "EN_COURSE" ? "En course" : "Arrivé"; }
   function statutClass(s) { return s === "ATTENTE" ? "attente" : s === "EN_COURSE" ? "en-course" : "arrive"; }
 
-  watchConnection((status) => {
-    const dot = $("#conn-dot"), label = $("#conn-label");
-    dot.className = "dot " + (status === "online" ? "online" : "offline");
-    label.textContent = status === "online" ? "En direct" : "Connexion perdue";
-  });
+  async function startPublicView() {
+    if (!eventId) {
+      $("#public-event-name").textContent = "Aucune épreuve indiquée dans le lien.";
+      $("#p-content").classList.add("hidden");
+      return;
+    }
 
-  watchEventConfig((config) => {
-    state.config = config;
-    if (config?.eventName) $("#public-event-name").textContent = config.eventName;
-    populateSortOptions();
-    render();
-  });
-  watchRiders((riders) => { state.riders = riders; render(); });
-  watchTiming((timing) => { state.timing = timing; render(); });
+    watchConnection((status) => {
+      const dot = $("#conn-dot"), label = $("#conn-label");
+      dot.className = "dot " + (status === "online" ? "online" : "offline");
+      label.textContent = status === "online" ? "En direct" : "Connexion perdue";
+    });
+
+    watchEventConfig((config) => {
+      state.config = config;
+      if (config?.eventName) $("#public-event-name").textContent = config.eventName;
+      populateSortOptions();
+      render();
+    });
+    watchRiders((riders) => { state.riders = riders; render(); });
+    watchTiming((timing) => { state.timing = timing; render(); });
+  }
+  startPublicView();
 
   const catSelect = $("#p-categorie");
   catSelect.innerHTML = `<option value="">Toutes catégories</option>` +

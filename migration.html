@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TRJV Enduro — Migration vers le multi-épreuves</title>
+<link rel="stylesheet" href="admin.css">
+</head>
+<body style="max-width:640px;margin:40px auto;padding:0 16px;">
+
+<div class="panel">
+  <h2>🔧 Migration unique vers le multi-épreuves</h2>
+  <p class="subtitle">
+    Cette page copie vos données actuelles (<code>/config</code>, <code>/riders</code>, <code>/timing</code>, <code>/history</code>
+    à la racine de la base) vers <code>events/{identifiant}/...</code>, sans rien supprimer à la racine.
+    À utiliser UNE SEULE FOIS, connecté avec votre compte administrateur global.
+  </p>
+
+  <div id="login-block">
+    <div class="field" style="margin-bottom:10px;"><label>Email admin</label><input type="email" id="mig-email"></div>
+    <div class="field" style="margin-bottom:14px;"><label>Mot de passe</label><input type="password" id="mig-password"></div>
+    <button class="btn btn-primary" id="mig-login">Se connecter</button>
+  </div>
+
+  <div id="run-block" class="hidden">
+    <div class="field" style="margin-bottom:10px;">
+      <label>Identifiant de l'épreuve cible (ex : lillebonne-2026)</label>
+      <input type="text" id="mig-event-id" value="lillebonne-2026">
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label>Nom affiché de l'épreuve</label>
+      <input type="text" id="mig-event-name" value="TRJV Enduro Lillebonne">
+    </div>
+    <button class="btn btn-primary" id="mig-run">Copier mes données actuelles vers cette épreuve</button>
+    <p id="mig-status" class="subtitle" style="margin-top:14px;"></p>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDnTfXUTYUMi7Kv6hFV3h0o798oNlbBK8M",
+    authDomain: "trjv-enduro-2026.firebaseapp.com",
+    databaseURL: "https://trjv-enduro-2026-default-rtdb.firebaseio.com",
+    projectId: "trjv-enduro-2026",
+    storageBucket: "trjv-enduro-2026.firebasestorage.app",
+    messagingSenderId: "700796765446",
+    appId: "1:700796765446:web:2cda8aaeba4b501f9cca87"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  document.getElementById("mig-login").addEventListener("click", async () => {
+    const email = document.getElementById("mig-email").value.trim();
+    const password = document.getElementById("mig-password").value;
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      // Marque ce compte comme administrateur global s'il ne l'est pas déjà (première mise en place).
+      const profileSnap = await get(ref(db, `users/${cred.user.uid}`));
+      if (!profileSnap.exists() || !profileSnap.val().isGlobalAdmin) {
+        await set(ref(db, `users/${cred.user.uid}`), { email, isGlobalAdmin: true, events: (profileSnap.val()?.events || {}) });
+      }
+      document.getElementById("login-block").classList.add("hidden");
+      document.getElementById("run-block").classList.remove("hidden");
+    } catch (err) {
+      alert("Connexion impossible : " + err.message);
+    }
+  });
+
+  document.getElementById("mig-run").addEventListener("click", async () => {
+    const status = document.getElementById("mig-status");
+    const eventId = document.getElementById("mig-event-id").value.trim();
+    const eventName = document.getElementById("mig-event-name").value.trim();
+    if (!eventId) { alert("Identifiant d'épreuve requis."); return; }
+
+    status.textContent = "Lecture des données actuelles…";
+    const [configSnap, ridersSnap, timingSnap, historySnap] = await Promise.all([
+      get(ref(db, "config")), get(ref(db, "riders")), get(ref(db, "timing")), get(ref(db, "history"))
+    ]);
+
+    status.textContent = "Copie vers events/" + eventId + " …";
+    const updates = {};
+    updates[`events/${eventId}/meta`] = { name: eventName, date: "", createdAt: Date.now() };
+    if (configSnap.exists()) updates[`events/${eventId}/config`] = configSnap.val();
+    if (ridersSnap.exists()) updates[`events/${eventId}/riders`] = ridersSnap.val();
+    if (timingSnap.exists()) updates[`events/${eventId}/timing`] = timingSnap.val();
+    if (historySnap.exists()) updates[`events/${eventId}/history`] = historySnap.val();
+    updates[`events/${eventId}/members/${auth.currentUser.uid}`] = { email: auth.currentUser.email, role: "admin" };
+
+    await update(ref(db), updates);
+    status.textContent = "✅ Terminé. Vos anciennes données à la racine (/config, /riders, /timing, /history) n'ont PAS été supprimées — vous pouvez les effacer manuellement dans la console Firebase une fois que vous avez vérifié que tout fonctionne bien dans la nouvelle épreuve « " + eventName + " ».";
+  });
+</script>
+</body>
+</html>
